@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources>
+    <string name="app_name">Quest Radar</string>
+    <string name="pick_location">New Target</string>
+    <string name="wake_lock">Display</string>
+</resources>
