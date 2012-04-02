@@ -1,6 +1,12 @@
 package de.renard.radar;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -14,25 +20,20 @@ public class RadarView extends View {
 
 	private Paint mCirclePaint;
 	private Paint mCirclePaintDestination;
-	// private GeoPoint mGeoPoint = new GeoPoint(51.2072022, 6.7734369);
-	// private GeoPoint mDestinationMock = new GeoPoint(51.20717242813358,
-	// 6.772105693817139);
-	// private GeoPoint mDestinationMock2 = new GeoPoint(51.207837869924724,
-	// 6.778489351272583);
-	// private Point mDestinationPoint = new Point();
-
-	private Location mDestination ;
-	{
-		mDestination = new Location("gps");
-		mDestination.setLatitude(51.20717242813358);
-		mDestination.setLongitude(6.772105693817139);
-	}
+	private Paint mDestinationTextPaint;
+	private Paint mDrawingCachePaint;
+	private Location mDestination = null;
 	private double mAzimuth;
-	// private MercatorProjection mProjection;
 	private final Rect mDisplayFrame = new Rect();
 	private float mDeclination;
-	private float mDistanceToDestinationMeters = 0;
+	private int mDistanceToDestinationMeters = 0;
 	private float mBearingToDestination = 0;
+	private Location mMapCenter;
+	private final static float TEXT_SIZE = 22f;
+	private float mTextSize = 0;
+	private Bitmap mDrawingCacheDistance;
+	private Rect mTextBounds = new Rect();
+	private String mDistanceToDestinationMetersString;
 
 	public RadarView(Context context, AttributeSet attrs) {
 		super(context, attrs);
@@ -51,28 +52,67 @@ public class RadarView extends View {
 				setStyle(Paint.Style.FILL);
 			}
 		};
-		// mProjection = new MercatorProjection(this);
+
+		mTextSize = TEXT_SIZE * getResources().getDisplayMetrics().density;
+		mDestinationTextPaint = new Paint() {
+			{
+				setColor(Color.WHITE);
+				setTextAlign(Paint.Align.LEFT);
+				setTextSize(mTextSize);
+				setAntiAlias(true);
+			}
+		};
+		mDrawingCachePaint = new Paint() {
+			{
+				setAntiAlias(true);
+			}
+		};
 	}
+	
+//	void foo(final String text) throws IOException{
+//		final Paint textPaint = new Paint() {
+//			{
+//				setColor(Color.WHITE);
+//				setTextAlign(Paint.Align.LEFT);
+//				setTextSize(20f);
+//				setAntiAlias(true);
+//			}
+//		};
+//		final Rect bounds = new Rect();
+//		textPaint.getTextBounds(text, 0, text.length(), bounds);
+//		
+//		final Bitmap bmp = Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.RGB_565); //use ARGB_8888 for better quality
+//		final Canvas canvas = new Canvas(bmp);
+//		canvas.drawText(text, 0, 20f, textPaint);
+//		FileOutputStream stream = new FileOutputStream(...); //create your FileOutputStream here
+//		bmp.compress(CompressFormat.PNG, 85, stream);
+//		bmp.recycle();
+//		stream.close();
+//	}
 
 	@Override
 	protected void onDraw(Canvas canvas) {
 		final float halfWidth = getWidth() / 2;
 		final float halfHeight = getHeight() / 2;
 		final float radius = Math.min(halfHeight, halfWidth);
+		final float r = radius * 0.8f;
 		canvas.save();
 		// draw cirlce
 		canvas.translate(getLeft(), getTop());
-		canvas.drawCircle(radius, radius, radius * 0.9f, mCirclePaint);
+		canvas.drawCircle(radius, radius, r, mCirclePaint);
 
 		// draw needle
 		canvas.translate(radius, radius);
 		canvas.rotate((float) Math.toDegrees(mAzimuth) + mDeclination);
-		canvas.drawLine(0, 0, 0, radius * 0.85f, mCirclePaint);
+		canvas.drawLine(0, 0, 0, r, mCirclePaint);
 
 		// draw destination
-		if (null!=mDestination){
+		if (null != mDestination && null != mMapCenter) {
 			canvas.rotate(mBearingToDestination);
-			canvas.drawCircle(0, radius *0.85f+7.5f, 15, mCirclePaintDestination);
+			canvas.drawCircle(0, r, 5, mCirclePaintDestination);
+			canvas.scale(-1, -1);
+			//canvas.drawBitmap(mDrawingCacheDistance, -mTextBounds.width() / 2, -r - mTextSize, mDrawingCachePaint);
+			 canvas.drawText(mDistanceToDestinationMetersString, -mTextBounds.width()/2, -r - mTextBounds.height()/2, mDestinationTextPaint);
 		}
 		canvas.restore();
 	}
@@ -105,21 +145,55 @@ public class RadarView extends View {
 		return mDistanceToDestinationMeters;
 	}
 
-	public void setMapCenter(final Location location) {
-		if (null != mDestination) {
-			mDistanceToDestinationMeters = location.distanceTo(mDestination);
-			mBearingToDestination = location.bearingTo(mDestination);
+	public void setDestination(double latitude, double longitude) {
+		if (null == mDestination) {
+			mDestination = new Location("user");
 		}
+		mDestination.setLatitude(latitude);
+		mDestination.setLongitude(longitude);
+		calculateDestinationAndBearing();
+	}
 
+	public void setDestination(final int latitude, final int longitude) {
+		setDestination(latitude / 1E6, longitude / 1E6);
+	}
+
+	private void calculateDestinationAndBearing() {
+		if (null != mDestination && null != mMapCenter) {
+			mDistanceToDestinationMeters = (int) mMapCenter.distanceTo(mDestination);
+			buildDrawCacheForDistance();
+			mBearingToDestination = mMapCenter.bearingTo(mDestination);
+		}
+	}
+
+	private void buildDrawCacheForDistance() {
+		mDistanceToDestinationMetersString = mDistanceToDestinationMeters + "m";
+//		if (mDrawingCacheDistance != null) {
+//			mDrawingCacheDistance.recycle();
+//		}
+		mDestinationTextPaint.getTextBounds(mDistanceToDestinationMetersString, 0, mDistanceToDestinationMetersString.length(), mTextBounds);
+//		mDrawingCacheDistance = Bitmap.createBitmap(mTextBounds.width()+2, mTextBounds.height(), Bitmap.Config.RGB_565);
+//		Canvas canvas = new Canvas(mDrawingCacheDistance);
+//		canvas.drawText(distance, 0, mTextBounds.height(), mDestinationTextPaint);
+	}
+
+	public void setMapCenter(final Location location) {
+		mMapCenter = location;
 		GeomagneticField geoField = new GeomagneticField(Double.valueOf(location.getLatitude()).floatValue(), Double.valueOf(location.getLongitude()).floatValue(), Double.valueOf(location.getAltitude()).floatValue(), System.currentTimeMillis());
-
 		mDeclination = geoField.getDeclination();
+		calculateDestinationAndBearing();
+	}
+
+	public Location getMapCenter() {
+		return mMapCenter;
+	}
+
+	public Location getDestination() {
+		return mDestination;
 	}
 
 	public void updateDirection(final double direction) {
-		// if (Math.abs(direction-mAzimuth)>=0.1){
 		mAzimuth = direction;
 		this.invalidate();
-		// }
 	}
 }

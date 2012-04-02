@@ -3,6 +3,8 @@ package de.renard.radar;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
 import android.hardware.Sensor;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
@@ -21,6 +23,7 @@ import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.TextView;
 import android.widget.ToggleButton;
 import de.renard.radar.CompassSensorListener.DirectionListener;
+import de.renard.radar.map.LocationPickActivity;
 
 public class RadarActivity extends Activity implements DirectionListener, LocationListener {
 
@@ -35,9 +38,9 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 	private SensorEventListener mListener;
 	private LocationManager mLocationManager;
 	private String mLocationProvider;
-	private TextView mTextViewDistance;
-	private TextView mTextViewBearing;
+	@SuppressWarnings("unused")
 	private TextView mTextViewSatellites;
+	private SharedPreferences mSharedPrefs;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -48,23 +51,21 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 		mSensorMagnetic = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		setContentView(R.layout.main);
 		mRadarView = (RadarView) findViewById(R.id.radarView);
-		mTextViewDistance = (TextView) findViewById(R.id.textView_distance);
-		mTextViewBearing = (TextView) findViewById(R.id.textView_bearing);
 		mTextViewSatellites = (TextView) findViewById(R.id.textView_satellites);
 		ToggleButton toggle = (ToggleButton) findViewById(R.id.button_wake_lock);
 		toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-			
+
 			@Override
 			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-				if(isChecked){
+				if (isChecked) {
 					getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 				} else {
 					getWindow().clearFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 				}
-				
+
 			}
 		});
-		
+
 		mListener = new CompassSensorListener(this, (WindowManager) getSystemService(WINDOW_SERVICE));
 		Button b = (Button) findViewById(R.id.button_pick_location);
 		b.setOnClickListener(new View.OnClickListener() {
@@ -76,13 +77,45 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 			}
 		});
 		initGPS();
+
+		mSharedPrefs = getSharedPreferences(RadarActivity.class.getSimpleName(), MODE_PRIVATE);
+
+		restoreDestionation();
+
+	}
+
+	private void restoreDestionation() {
+		if (mSharedPrefs.contains(LocationPickActivity.EXTRA_LATITUDE)) {
+			final int latitudeE6 = mSharedPrefs.getInt(LocationPickActivity.EXTRA_LATITUDE, 0);
+			final int longitudeE6 = mSharedPrefs.getInt(LocationPickActivity.EXTRA_LONGITUDE, 0);
+			mRadarView.setDestination(latitudeE6, longitudeE6);
+		}
+	}
+
+	private void saveDestination() {
+		if (null != mRadarView.getDestination()) {
+			final Editor editor = mSharedPrefs.edit();
+			final int latitudeE6 = (int) (mRadarView.getDestination().getLatitude() * 1E6);
+			final int longitudeE6 = (int) (mRadarView.getDestination().getLongitude() * 1E6);
+			editor.putInt(LocationPickActivity.EXTRA_LATITUDE, latitudeE6);
+			editor.putInt(LocationPickActivity.EXTRA_LONGITUDE, longitudeE6);
+			editor.commit();
+		}
+	}
+	
+	@Override
+	public void onBackPressed() {
+		super.onBackPressed();
+		saveDestination();
 	}
 
 	private void initGPS() {
 		mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		mLocationProvider = mLocationManager.getBestProvider(new Criteria(), false);
 		Location location = mLocationManager.getLastKnownLocation(mLocationProvider);
-		mRadarView.setMapCenter(location);
+		if (null != location) {
+			mRadarView.setMapCenter(location);
+		}
 	}
 
 	@Override
@@ -90,7 +123,9 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 		if (resultCode == RESULT_OK) {
 			switch (requestCode) {
 			case REQUEST_CODE_LOCATION:
-				// TODO add location to compass view
+				final int latE6 = data.getIntExtra(LocationPickActivity.EXTRA_LATITUDE, -1);
+				final int longE6 = data.getIntExtra(LocationPickActivity.EXTRA_LONGITUDE, -1);
+				mRadarView.setDestination(latE6, longE6);
 			}
 		}
 	}
@@ -110,7 +145,7 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 		mSensorManager.unregisterListener(mListener);
 		mLocationManager.removeUpdates(this);
 	}
-
+	
 	@Override
 	public void onDirectionChanged(double bearing) {
 		mRadarView.updateDirection(bearing);
@@ -118,27 +153,24 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 
 	@Override
 	public void onLocationChanged(Location location) {
-		Log.i("RadarActivity",location.toString());
+		Log.i("RadarActivity", location.toString());
 		mRadarView.setMapCenter(location);
-		
-		final float meters = mRadarView.getDistanceToDestination();
-		final float bearing = mRadarView.getBearingToDestination();
-		mTextViewDistance.setText(String.valueOf(meters));
-		mTextViewBearing.setText(String.valueOf(bearing));
-
-//		float[] val = new float[2];
-//		Location.distanceBetween(location.getLatitude(), location.getLongitude(), dest.getLatitude(), dest.getLongitude(), val);
-//		
-//		final float distance = val[0];
-//		final float bearing = val[1];
-//		
 	}
 
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
-		if (extras!=null){
+		if (extras != null) {
 			final Object sats = extras.get("satellites");
+			if (sats != null) {
+				Log.i("RadarActivity", sats.toString());
+			}
 		}
+	}
+
+	@Override
+	protected void onSaveInstanceState(Bundle outState) {
+		super.onSaveInstanceState(outState);
+		saveDestination();
 	}
 
 	@Override

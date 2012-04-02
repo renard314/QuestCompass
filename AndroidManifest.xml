@@ -19,13 +19,14 @@
         </uses-library>
 
         <activity
-            android:name=".LocationPickActivity"
+            android:name=".map.LocationPickActivity"
             android:label="@string/app_name"
             android:theme="@android:style/Theme.NoTitleBar" >
         </activity>
         <activity
             android:name=".RadarActivity"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@android:style/Theme.NoTitleBar" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

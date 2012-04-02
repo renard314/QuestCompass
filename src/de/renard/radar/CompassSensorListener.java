@@ -46,7 +46,7 @@ public class CompassSensorListener implements SensorEventListener {
 
 		average(mMagneticValues, mMagnetic);
 		average(mAccelerationValues, mAcceleration);
-		final int rotation = mWindowManager.getDefaultDisplay().getRotation();
+		final int rotation = mWindowManager.getDefaultDisplay().getOrientation();
 		double azimuth = CompassHelper.CalculateHeading(mMagnetic, mAcceleration, rotation);
 		mListener.onDirectionChanged(azimuth);
 	}
