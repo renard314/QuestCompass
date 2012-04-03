@@ -1,12 +1,7 @@
 package de.renard.radar;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
-
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.CompressFormat;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -22,6 +17,10 @@ public class RadarView extends View {
 	private Paint mCirclePaintDestination;
 	private Paint mDestinationTextPaint;
 	private Paint mDrawingCachePaint;
+	private Paint mMarkerPaint;
+	private Paint mDirectionTextPaint;
+	private Paint mAngleTextPaint;
+
 	private Location mDestination = null;
 	private double mAzimuth;
 	private final Rect mDisplayFrame = new Rect();
@@ -29,20 +28,41 @@ public class RadarView extends View {
 	private int mDistanceToDestinationMeters = 0;
 	private float mBearingToDestination = 0;
 	private Location mMapCenter;
-	private final static float TEXT_SIZE = 22f;
-	private float mTextSize = 0;
+	private final static float DIRECTION_TEXT_SIZE = 24f;
+	private final static float ANGLE_TEXT_SIZE = 18f;
+	private float mDirectionTextSize = 0;
+	private float mAngleTextSize = 0;
 	private Bitmap mDrawingCacheDistance;
+	private Bitmap mDrawingCacheCompass;
 	private Rect mTextBounds = new Rect();
 	private String mDistanceToDestinationMetersString;
+	private float mCompassRadius = 0;
+
+	private final static String sNorthString = "N";
+	private final static String sSouthString = "S";
+	private final static String sEastString = "E";
+	private final static String sWestString = "W";
+	private static final int sMarkerLength = 10;
+	private final int sDirectionTextHeight;
+	private final int sAngleTextHeight;
 
 	public RadarView(Context context, AttributeSet attrs) {
 		super(context, attrs);
+		mMarkerPaint = new Paint() {
+			{
+				setColor(Color.WHITE);
+				setAntiAlias(true);
+				setStyle(Paint.Style.STROKE);
+				setStrokeWidth(2);
+			}
+		};
+
 		mCirclePaint = new Paint() {
 			{
 				setColor(Color.WHITE);
 				setStyle(Paint.Style.STROKE);
 				setAntiAlias(true);
-				setStrokeWidth(2);
+				setStrokeWidth(3);
 			}
 		};
 
@@ -53,68 +73,147 @@ public class RadarView extends View {
 			}
 		};
 
-		mTextSize = TEXT_SIZE * getResources().getDisplayMetrics().density;
+		mDirectionTextSize = DIRECTION_TEXT_SIZE * getResources().getDisplayMetrics().density;
 		mDestinationTextPaint = new Paint() {
 			{
 				setColor(Color.WHITE);
 				setTextAlign(Paint.Align.LEFT);
-				setTextSize(mTextSize);
+				setTextSize(mDirectionTextSize);
+				setAntiAlias(true);
+			}
+		};
+		mDirectionTextPaint = new Paint() {
+			{
+				setColor(Color.WHITE);
+				setTextAlign(Paint.Align.LEFT);
+				setTextSize(mDirectionTextSize);
+				setAntiAlias(true);
+			}
+		};
+		mAngleTextSize = ANGLE_TEXT_SIZE * getResources().getDisplayMetrics().density;
+
+		mAngleTextPaint = new Paint() {
+			{
+				setColor(Color.WHITE);
+				setTextAlign(Paint.Align.LEFT);
+				setTextSize(mAngleTextSize);
 				setAntiAlias(true);
 			}
 		};
 		mDrawingCachePaint = new Paint() {
 			{
 				setAntiAlias(true);
+				setFilterBitmap(true);
 			}
 		};
+		mDirectionTextPaint.getTextBounds(sNorthString, 0, sNorthString.length(), mTextBounds);
+		sDirectionTextHeight = mTextBounds.height();
+		mAngleTextPaint.getTextBounds("1", 0, 1, mTextBounds);
+		sAngleTextHeight = mTextBounds.height();
 	}
-	
-//	void foo(final String text) throws IOException{
-//		final Paint textPaint = new Paint() {
-//			{
-//				setColor(Color.WHITE);
-//				setTextAlign(Paint.Align.LEFT);
-//				setTextSize(20f);
-//				setAntiAlias(true);
-//			}
-//		};
-//		final Rect bounds = new Rect();
-//		textPaint.getTextBounds(text, 0, text.length(), bounds);
-//		
-//		final Bitmap bmp = Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.RGB_565); //use ARGB_8888 for better quality
-//		final Canvas canvas = new Canvas(bmp);
-//		canvas.drawText(text, 0, 20f, textPaint);
-//		FileOutputStream stream = new FileOutputStream(...); //create your FileOutputStream here
-//		bmp.compress(CompressFormat.PNG, 85, stream);
-//		bmp.recycle();
-//		stream.close();
-//	}
 
-	@Override
-	protected void onDraw(Canvas canvas) {
+	/**
+	 * Draw the marker every 15 degrees and text every 45. Canvas needs to be
+	 * translated to the center of the circle.
+	 * 
+	 * @param canvas
+	 */
+	private void drawMarkers(final Canvas canvas, final float radius) {
+		canvas.save();
+		for (int i = 0; i < 24; i++) {
+			// Draw a marker.
+			canvas.drawLine(0, radius, 0, radius + sMarkerLength, mMarkerPaint);
+
+			// Draw the cardinal points
+			if (i % 6 == 0) {
+				String dirString = "";
+				switch (i) {
+				case (0): {
+					dirString = sNorthString;
+					// int arrowY = 2*textHeight;
+					// canvas.drawLine(px, arrowY, px-5, 3*textHeight,
+					// markerPaint);
+					// canvas.drawLine(px, arrowY, px+5, 3*textHeight,
+					// markerPaint);
+					break;
+				}
+				case (6):
+					dirString = sEastString;
+					break;
+				case (12):
+					dirString = sSouthString;
+					break;
+				case (18):
+					dirString = sWestString;
+					break;
+				}
+				final float xoffset  = mDirectionTextPaint.measureText(dirString)/2;
+				canvas.drawText(dirString, -xoffset, radius + sDirectionTextHeight+sMarkerLength*1.2f, mDirectionTextPaint);
+			}
+
+			else if (i % 2 == 0) {
+				// Draw the text every alternate 45deg
+				final String angle = String.valueOf(i * 15);
+				final float xoffset  = mAngleTextPaint.measureText(angle)/2;
+				canvas.drawText(angle, -xoffset, radius + sAngleTextHeight+sMarkerLength*1.2f, mAngleTextPaint);
+			}
+			canvas.rotate(15);
+		}
+		canvas.restore();
+
+	}
+
+	private void buildCompassBitmap(){
+		mDrawingCacheCompass = Bitmap.createBitmap(getWidth(),getHeight(), Bitmap.Config.ARGB_8888);
 		final float halfWidth = getWidth() / 2;
 		final float halfHeight = getHeight() / 2;
 		final float radius = Math.min(halfHeight, halfWidth);
 		final float r = radius * 0.8f;
-		canvas.save();
+		Canvas canvas = new Canvas(mDrawingCacheCompass);
 		// draw cirlce
-		canvas.translate(getLeft(), getTop());
-		canvas.drawCircle(radius, radius, r, mCirclePaint);
-
-		// draw needle
 		canvas.translate(radius, radius);
-		canvas.rotate((float) Math.toDegrees(mAzimuth) + mDeclination);
-		canvas.drawLine(0, 0, 0, r, mCirclePaint);
+		canvas.drawCircle(0, 0, r, mCirclePaint);
+		// draw needle
+		//canvas.drawLine(0, 0, 0, -r, mCirclePaint);
+		drawMarkers(canvas,-r);
+		mCompassRadius = r;
+	}
+	
+	@Override
+	protected void onDraw(Canvas canvas) {
+		if (null==mDrawingCacheCompass){
+			buildCompassBitmap();
+		}
+		final float halfWidth = getWidth() / 2;
+		final float halfHeight = getHeight() / 2;
+		final float radius = Math.min(halfHeight, halfWidth);
+		final double rotateAngle = Math.toDegrees(mAzimuth) + mDeclination+180;
+
+		canvas.rotate((float) rotateAngle ,radius,radius);
+		canvas.drawBitmap(mDrawingCacheCompass,0,0, mDrawingCachePaint);
 
 		// draw destination
 		if (null != mDestination && null != mMapCenter) {
-			canvas.rotate(mBearingToDestination);
-			canvas.drawCircle(0, r, 5, mCirclePaintDestination);
-			canvas.scale(-1, -1);
-			//canvas.drawBitmap(mDrawingCacheDistance, -mTextBounds.width() / 2, -r - mTextSize, mDrawingCachePaint);
-			 canvas.drawText(mDistanceToDestinationMetersString, -mTextBounds.width()/2, -r - mTextBounds.height()/2, mDestinationTextPaint);
+			canvas.translate(radius, radius);
+			canvas.rotate(mBearingToDestination+180);
+			canvas.rotate((float)-rotateAngle-mBearingToDestination-180, 0, mCompassRadius);
+			canvas.drawCircle(0, mCompassRadius, 5, mCirclePaintDestination);
+			//canvas.scale(-1, -1);
+			canvas.drawBitmap(mDrawingCacheDistance, -mTextBounds.width() / 2, mCompassRadius , mDrawingCachePaint);
+			// canvas.drawText(mDistanceToDestinationMetersString,
+			// -mTextBounds.width()/2, -r - mTextBounds.height()/2,
+			// mDestinationTextPaint);
 		}
 		canvas.restore();
+	}
+	
+	@Override
+	protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+		super.onLayout(changed, left, top, right, bottom);
+		if (changed && null!=mDrawingCacheCompass){			
+			mDrawingCacheCompass.recycle();
+			mDrawingCacheCompass = null;
+		}
 	}
 
 	/**
@@ -166,15 +265,37 @@ public class RadarView extends View {
 		}
 	}
 
+	private String buildDistanceString() {
+		float distance = mDistanceToDestinationMeters;
+		String format;
+		String unit;
+		if (mDistanceToDestinationMeters >= 1000) {
+			distance /= 1000;
+			unit = "km";
+			format = "%,.2f%s";
+		} else {
+			unit = "m";
+			format = "%,.0f%s";
+		}
+		return String.format(format, distance, unit);
+	}
+
 	private void buildDrawCacheForDistance() {
-		mDistanceToDestinationMetersString = mDistanceToDestinationMeters + "m";
-//		if (mDrawingCacheDistance != null) {
-//			mDrawingCacheDistance.recycle();
-//		}
+		final String newDestinationString = buildDistanceString();
+		if (mDrawingCacheDistance != null && newDestinationString.equals(mDistanceToDestinationMetersString)) {
+			return;
+		}
+		mDistanceToDestinationMetersString = newDestinationString;
 		mDestinationTextPaint.getTextBounds(mDistanceToDestinationMetersString, 0, mDistanceToDestinationMetersString.length(), mTextBounds);
-//		mDrawingCacheDistance = Bitmap.createBitmap(mTextBounds.width()+2, mTextBounds.height(), Bitmap.Config.RGB_565);
-//		Canvas canvas = new Canvas(mDrawingCacheDistance);
-//		canvas.drawText(distance, 0, mTextBounds.height(), mDestinationTextPaint);
+		if (null == mDrawingCacheDistance) {
+			mDrawingCacheDistance = Bitmap.createBitmap(mTextBounds.width() + 2, mTextBounds.height(), Bitmap.Config.ARGB_8888);
+		} else if (mDrawingCacheDistance.getWidth() != mTextBounds.width() + 2 || mDrawingCacheDistance.getHeight() != mTextBounds.height()) {
+			mDrawingCacheDistance.recycle();
+			mDrawingCacheDistance = Bitmap.createBitmap(mTextBounds.width() + 2, mTextBounds.height(), Bitmap.Config.ARGB_8888);
+		} 
+		Canvas canvas = new Canvas(mDrawingCacheDistance);
+		canvas.drawColor(Color.TRANSPARENT);
+		canvas.drawText(mDistanceToDestinationMetersString, 0, mTextBounds.height(), mDestinationTextPaint);
 	}
 
 	public void setMapCenter(final Location location) {

@@ -13,6 +13,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -81,7 +82,6 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 		mSharedPrefs = getSharedPreferences(RadarActivity.class.getSimpleName(), MODE_PRIVATE);
 
 		restoreDestionation();
-
 	}
 
 	private void restoreDestionation() {
