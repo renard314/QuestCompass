@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:orientation="vertical" >
@@ -7,36 +7,32 @@
     <de.renard.radar.RadarView
         android:id="@+id/radarView"
         android:layout_width="fill_parent"
-        android:layout_height="fill_parent" >
+        android:layout_height="fill_parent"
+        android:layout_alignParentTop="true" >
     </de.renard.radar.RadarView>
 
-    <LinearLayout
+    <de.renard.radar.views.RotateView
+        android:id="@+id/rotateView"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" >
-    <Button
-        android:id="@+id/button_pick_location"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/pick_location" />
-    <ToggleButton
-        android:id="@+id/button_wake_lock"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/wake_lock" />
-
-
-    </LinearLayout>
+        android:layout_height="fill_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_below="@+id/radarView" />
 
     <LinearLayout
         android:layout_width="fill_parent"
         android:layout_height="wrap_content" >
 
-        <TextView
-            android:id="@+id/textView_satellites"
-            android:layout_width="0dp"
+        <Button
+            android:id="@+id/button_pick_location"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            android:text="@string/pick_location" />
+
+        <ToggleButton
+            android:id="@+id/button_wake_lock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/wake_lock" />
     </LinearLayout>
 
-</LinearLayout>
+</RelativeLayout>

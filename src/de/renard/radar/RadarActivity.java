@@ -20,10 +20,10 @@ import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
-import android.widget.TextView;
 import android.widget.ToggleButton;
 import de.renard.radar.CompassSensorListener.DirectionListener;
 import de.renard.radar.map.LocationPickActivity;
+import de.renard.radar.views.RotateView;
 
 public class RadarActivity extends Activity implements DirectionListener, LocationListener {
 
@@ -35,11 +35,10 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 	private Sensor mSensorMagnetic;
 	private Sensor mSensorAcceleration;
 	private RadarView mRadarView;
+	private RotateView mRotateView;
 	private SensorEventListener mListener;
 	private LocationManager mLocationManager;
 	private String mLocationProvider;
-	@SuppressWarnings("unused")
-	private TextView mTextViewSatellites;
 	private SharedPreferences mSharedPrefs;
 
 	/** Called when the activity is first created. */
@@ -51,7 +50,7 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 		mSensorMagnetic = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		setContentView(R.layout.main);
 		mRadarView = (RadarView) findViewById(R.id.radarView);
-		mTextViewSatellites = (TextView) findViewById(R.id.textView_satellites);
+		mRotateView = (RotateView) findViewById(R.id.rotateView);
 		ToggleButton toggle = (ToggleButton) findViewById(R.id.button_wake_lock);
 		toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
@@ -149,6 +148,7 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 	public void onDirectionChanged(double bearing) {
 		mRadarView.updateDirection(bearing);
 	}
+	
 
 	@Override
 	public void onLocationChanged(Location location) {
@@ -165,7 +165,7 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 			}
 		}
 	}
-
+	
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
@@ -178,6 +178,16 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 
 	@Override
 	public void onProviderDisabled(String provider) {
+	}
+
+	@Override
+	public void onRollChanged(float roll) {
+		mRotateView.setRotation(roll);
+	}
+
+	@Override
+	public void onPitchChanged(float pitch) {
+		
 	}
 
 }
