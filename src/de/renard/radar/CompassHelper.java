@@ -1,6 +1,7 @@
 package de.renard.radar;
 
 import android.view.Surface;
+
 /**
  * computes correct azimuth independent of device screen rotation
  * source: http://www.littlefluffytoys.com/?p=190

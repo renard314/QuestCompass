@@ -13,6 +13,18 @@ import android.view.View;
 
 public class RadarView extends View {
 
+	// text size for compass directions
+	private final static float DIRECTION_TEXT_SIZE = 24f;
+	// text size for angles
+	private final static float ANGLE_TEXT_SIZE = 18f;
+	// length of marker lines in pixels
+	private static final int sMarkerLength = 10;
+	// labels for compass directions
+	private final static String sNorthString = "N";
+	private final static String sSouthString = "S";
+	private final static String sEastString = "E";
+	private final static String sWestString = "W";
+
 	private Paint mCirclePaint;
 	private Paint mCirclePaintDestination;
 	private Paint mDestinationTextPaint;
@@ -28,21 +40,14 @@ public class RadarView extends View {
 	private int mDistanceToDestinationMeters = 0;
 	private float mBearingToDestination = 0;
 	private Location mMapCenter;
-	private final static float DIRECTION_TEXT_SIZE = 24f;
-	private final static float ANGLE_TEXT_SIZE = 18f;
 	private float mDirectionTextSize = 0;
 	private float mAngleTextSize = 0;
 	private Bitmap mDrawingCacheDistance;
 	private Bitmap mDrawingCacheCompass;
-	private Rect mTextBounds = new Rect();
+	private final Rect mTextBounds = new Rect();
 	private String mDistanceToDestinationMetersString;
 	private float mCompassRadius = 0;
 
-	private final static String sNorthString = "N";
-	private final static String sSouthString = "S";
-	private final static String sEastString = "E";
-	private final static String sWestString = "W";
-	private static final int sMarkerLength = 10;
 	private final int sDirectionTextHeight;
 	private final int sAngleTextHeight;
 
@@ -113,8 +118,7 @@ public class RadarView extends View {
 	}
 
 	/**
-	 * Draw the marker every 15 degrees and text every 45. Canvas needs to be
-	 * translated to the center of the circle.
+	 * Draw the marker every 15 degrees and text every 30.
 	 * 
 	 * @param canvas
 	 */
@@ -147,15 +151,15 @@ public class RadarView extends View {
 					dirString = sWestString;
 					break;
 				}
-				final float xoffset  = mDirectionTextPaint.measureText(dirString)/2;
-				canvas.drawText(dirString, -xoffset, radius + sDirectionTextHeight+sMarkerLength*1.2f, mDirectionTextPaint);
+				final float xoffset = mDirectionTextPaint.measureText(dirString) / 2;
+				canvas.drawText(dirString, -xoffset, radius + sDirectionTextHeight + sMarkerLength * 1.2f, mDirectionTextPaint);
 			}
 
 			else if (i % 2 == 0) {
 				// Draw the text every alternate 45deg
 				final String angle = String.valueOf(i * 15);
-				final float xoffset  = mAngleTextPaint.measureText(angle)/2;
-				canvas.drawText(angle, -xoffset, radius + sAngleTextHeight+sMarkerLength*1.2f, mAngleTextPaint);
+				final float xoffset = mAngleTextPaint.measureText(angle) / 2;
+				canvas.drawText(angle, -xoffset, radius + sAngleTextHeight + sMarkerLength * 1.2f, mAngleTextPaint);
 			}
 			canvas.rotate(15);
 		}
@@ -163,8 +167,8 @@ public class RadarView extends View {
 
 	}
 
-	private void buildCompassBitmap(){
-		mDrawingCacheCompass = Bitmap.createBitmap(getWidth(),getHeight(), Bitmap.Config.ARGB_8888);
+	private void buildCompassBitmap() {
+		mDrawingCacheCompass = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
 		final float halfWidth = getWidth() / 2;
 		final float halfHeight = getHeight() / 2;
 		final float radius = Math.min(halfHeight, halfWidth);
@@ -174,43 +178,39 @@ public class RadarView extends View {
 		canvas.translate(radius, radius);
 		canvas.drawCircle(0, 0, r, mCirclePaint);
 		// draw needle
-		//canvas.drawLine(0, 0, 0, -r, mCirclePaint);
-		drawMarkers(canvas,-r);
+		// canvas.drawLine(0, 0, 0, -r, mCirclePaint);
+		drawMarkers(canvas, -r);
 		mCompassRadius = r;
 	}
-	
+
 	@Override
 	protected void onDraw(Canvas canvas) {
-		if (null==mDrawingCacheCompass){
+		if (null == mDrawingCacheCompass) {
 			buildCompassBitmap();
 		}
 		final float halfWidth = getWidth() / 2;
 		final float halfHeight = getHeight() / 2;
 		final float radius = Math.min(halfHeight, halfWidth);
-		final double rotateAngle = Math.toDegrees(mAzimuth) + mDeclination+180;
+		final double rotateAngle = Math.toDegrees(mAzimuth) + mDeclination + 180;
 
-		canvas.rotate((float) rotateAngle ,radius,radius);
-		canvas.drawBitmap(mDrawingCacheCompass,0,0, mDrawingCachePaint);
+		canvas.rotate((float) rotateAngle, radius, radius);
+		canvas.drawBitmap(mDrawingCacheCompass, 0, 0, mDrawingCachePaint);
 
-		// draw destination
+		// draw destination marker
 		if (null != mDestination && null != mMapCenter) {
 			canvas.translate(radius, radius);
-			canvas.rotate(mBearingToDestination+180);
-			canvas.rotate((float)-rotateAngle-mBearingToDestination-180, 0, mCompassRadius);
+			canvas.rotate(mBearingToDestination + 180);
+			canvas.rotate((float) -rotateAngle - mBearingToDestination - 180, 0, mCompassRadius);
 			canvas.drawCircle(0, mCompassRadius, 5, mCirclePaintDestination);
-			//canvas.scale(-1, -1);
-			canvas.drawBitmap(mDrawingCacheDistance, -mTextBounds.width() / 2, mCompassRadius , mDrawingCachePaint);
-			// canvas.drawText(mDistanceToDestinationMetersString,
-			// -mTextBounds.width()/2, -r - mTextBounds.height()/2,
-			// mDestinationTextPaint);
+			canvas.drawBitmap(mDrawingCacheDistance, -mTextBounds.width() / 2, mCompassRadius - mDirectionTextSize, mDrawingCachePaint);
 		}
 		canvas.restore();
 	}
-	
+
 	@Override
 	protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
 		super.onLayout(changed, left, top, right, bottom);
-		if (changed && null!=mDrawingCacheCompass){			
+		if (changed && null != mDrawingCacheCompass) {
 			mDrawingCacheCompass.recycle();
 			mDrawingCacheCompass = null;
 		}
@@ -292,9 +292,10 @@ public class RadarView extends View {
 		} else if (mDrawingCacheDistance.getWidth() != mTextBounds.width() + 2 || mDrawingCacheDistance.getHeight() != mTextBounds.height()) {
 			mDrawingCacheDistance.recycle();
 			mDrawingCacheDistance = Bitmap.createBitmap(mTextBounds.width() + 2, mTextBounds.height(), Bitmap.Config.ARGB_8888);
-		} 
+		}
 		Canvas canvas = new Canvas(mDrawingCacheDistance);
-		canvas.drawColor(Color.TRANSPARENT);
+		//canvas.drawColor(Color.BLACK);
+		canvas.drawColor(0, android.graphics.PorterDuff.Mode.DST_IN);
 		canvas.drawText(mDistanceToDestinationMetersString, 0, mTextBounds.height(), mDestinationTextPaint);
 	}
 

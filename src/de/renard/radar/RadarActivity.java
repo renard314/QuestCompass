@@ -13,7 +13,6 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -29,7 +28,7 @@ import de.renard.radar.map.LocationPickActivity;
 public class RadarActivity extends Activity implements DirectionListener, LocationListener {
 
 	private final static int REQUEST_CODE_LOCATION = 0;
-	private final static int LOCATION_MIN_TIME_MS = 0;
+	private final static int LOCATION_MIN_TIME_MS = 15000;
 	private final static int LOCATION_MIN_DISTANCE_METERS = 0;
 
 	private SensorManager mSensorManager;
@@ -77,7 +76,7 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 				startActivityForResult(i, REQUEST_CODE_LOCATION);
 			}
 		});
-		initGPS();
+		getLasKnownLocation();
 
 		mSharedPrefs = getSharedPreferences(RadarActivity.class.getSimpleName(), MODE_PRIVATE);
 
@@ -109,7 +108,7 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 		saveDestination();
 	}
 
-	private void initGPS() {
+	private void getLasKnownLocation() {
 		mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 		mLocationProvider = mLocationManager.getBestProvider(new Criteria(), false);
 		Location location = mLocationManager.getLastKnownLocation(mLocationProvider);
