@@ -4,50 +4,54 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.view.WindowManager;
 
 /**
- * accumulates and averages Magnetic and Acceleration SensorEvents and reports back the device heading.
+ * accumulates and averages Magnetic and Acceleration SensorEvents and reports
+ * back the device heading.
+ * 
  * @author renard
- *
+ * 
  */
 public class CompassSensorListener implements SensorEventListener {
 
 	/**
 	 * receives azimuth values
+	 * 
 	 * @author renard
-	 *
+	 * 
 	 */
 	public interface DirectionListener {
 		void onDirectionChanged(final double bearing);
+
 		void onRollChanged(final float roll);
+
 		void onPitchChanged(final float pitch);
 	}
-		
-	//number of values which are averaged
-	private final int STACK_SIZE = 10;
-	//arrays to keep track of the last Sensor Events
+
+	// number of values which are averaged
+	private final int STACK_SIZE = 20;
+	// arrays to keep track of the last Sensor Events
 	private final float[][] mAccelerationValues = new float[STACK_SIZE][3];
 	private final float[][] mMagneticValues = new float[STACK_SIZE][3];
-	//current indexes into the arrays
+	// current indexes into the arrays
 	private int mAccelerationIndex = 0;
 	private int mMagneticIndex = 0;
-	//holder for temporary values
+	// holder for temporary values
 	private final float[] mMagnetic = new float[3];
 	private final float[] mAcceleration = new float[3];
-    float[] mMappedValues = new float[3];
-    float[] mRotationMatrix = new float[9];
-    float[] mMappedRotationMatrix = new float[9];
-    
-    private final DirectionListener mListener;
+	float[] mMappedValues = new float[3];
+	float[] mRotationMatrix = new float[9];
+	float[] mMappedRotationMatrix = new float[9];
 
+	private final DirectionListener mListener;
 
 	/**
-	 * @param Listener receives direction updates
-	 * @param windowManager Needed for device screen rotation
+	 * @param Listener
+	 *            receives direction updates
+	 * @param windowManager
+	 *            Needed for device screen rotation
 	 */
-	public CompassSensorListener(final DirectionListener listener, WindowManager windowManager) {
-		//mWindowManager = windowManager;
+	public CompassSensorListener(final DirectionListener listener) {
 		mListener = listener;
 	}
 
@@ -70,33 +74,32 @@ public class CompassSensorListener implements SensorEventListener {
 
 		average(mMagneticValues, mMagnetic);
 		average(mAccelerationValues, mAcceleration);
-		//final int rotation = mWindowManager.getDefaultDisplay().getOrientation();
-		//double azimuth = CompassHelper.CalculateHeading(mMagnetic, mAcceleration, rotation);
+		// final int rotation =
+		// mWindowManager.getDefaultDisplay().getOrientation();
+		// double azimuth = CompassHelper.CalculateHeading(mMagnetic,
+		// mAcceleration, rotation);
 		float[] values = calculateOrientation();
+		// mListener.onDirectionChanged(Math.toDegrees(azimuth));
 		mListener.onDirectionChanged(values[0]);
 		mListener.onPitchChanged(values[1]);
 		mListener.onRollChanged(values[2]);
 	}
 
-    private float[] calculateOrientation() {
+	private float[] calculateOrientation() {
 
+		SensorManager.getRotationMatrix(mRotationMatrix, null, mAcceleration, mMagnetic);
+		SensorManager.remapCoordinateSystem(mRotationMatrix, SensorManager.AXIS_X, SensorManager.AXIS_Z, mMappedRotationMatrix);
 
-        SensorManager.getRotationMatrix(mRotationMatrix, null, mAcceleration, mMagnetic);
-        SensorManager.remapCoordinateSystem(mRotationMatrix, 
-                                            SensorManager.AXIS_X, 
-                                            SensorManager.AXIS_Z, 
-                                            mMappedRotationMatrix);
+		SensorManager.getOrientation(mMappedRotationMatrix, mMappedValues);
 
-        SensorManager.getOrientation(mMappedRotationMatrix, mMappedValues);
+		// Convert from Radians to Degrees.
+		mMappedValues[0] = (float) Math.toDegrees(mMappedValues[0]);
+		mMappedValues[1] = (float) Math.toDegrees(mMappedValues[1]);
+		mMappedValues[2] = (float) Math.toDegrees(mMappedValues[2]);
 
-        // Convert from Radians to Degrees.
-        mMappedValues[0] = (float) Math.toDegrees(mMappedValues[0]);
-        mMappedValues[1] = (float) Math.toDegrees(mMappedValues[1]);
-        mMappedValues[2] = (float) Math.toDegrees(mMappedValues[2]);
+		return mMappedValues;
+	}
 
-        return mMappedValues;
-      }
-	
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
 	}

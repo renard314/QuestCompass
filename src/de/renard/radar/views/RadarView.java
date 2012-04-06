@@ -1,4 +1,4 @@
-package de.renard.radar;
+package de.renard.radar.views;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -9,8 +9,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
-import android.hardware.GeomagneticField;
-import android.location.Location;
 import android.util.AttributeSet;
 import android.view.View;
 
@@ -39,13 +37,11 @@ public class RadarView extends View {
 	private Paint mLabelTextPaint;
 	private Paint mAngleTextPaint;
 
-	private Location mDestination = null;
 	private double mAzimuth;
 	private final Rect mDisplayFrame = new Rect();
 	private float mDeclination;
 	private int mDistanceToDestinationMeters = 0;
 	private float mBearingToDestination = 0;
-	private Location mMapCenter;
 	private float mDirectionTextSize = 0;
 	private float mAngleTextSize = 0;
 	private float mLabelTextSize = 0;
@@ -59,6 +55,8 @@ public class RadarView extends View {
 	private final int sAngleTextHeight;
 	private final int sLabelTextHeight;
 
+	private boolean mHasDestination = false;
+	
 	public RadarView(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		mMarkerPaint = new Paint() {
@@ -179,7 +177,7 @@ public class RadarView extends View {
 			}
 
 			else if (i % 2 == 0) {
-				// Draw the text every alternate 45deg
+				// Draw the text every alternate 30deg
 				final String angle = String.valueOf(i * 15);
 				final float xoffset = mAngleTextPaint.measureText(angle) / 2;
 				canvas.drawText(angle, -xoffset, -radius + sAngleTextHeight + sMarkerLength * 1.2f, mAngleTextPaint);
@@ -220,7 +218,7 @@ public class RadarView extends View {
 		canvas.drawBitmap(mDrawingCacheCompass, 0, 0, mDrawingCachePaint);
 
 		// draw destination marker
-		if (null != mDestination && null != mMapCenter) {
+		if (true == mHasDestination) {
 			canvas.translate(radius, radius);
 			canvas.rotate(mBearingToDestination+180);
 			canvas.rotate((float) -rotateAngle - mBearingToDestination-180 , 0, mCompassRadius);
@@ -267,26 +265,6 @@ public class RadarView extends View {
 		return mDistanceToDestinationMeters;
 	}
 
-	public void setDestination(double latitude, double longitude) {
-		if (null == mDestination) {
-			mDestination = new Location("user");
-		}
-		mDestination.setLatitude(latitude);
-		mDestination.setLongitude(longitude);
-		calculateDestinationAndBearing();
-	}
-
-	public void setDestination(final int latitude, final int longitude) {
-		setDestination(latitude / 1E6, longitude / 1E6);
-	}
-
-	private void calculateDestinationAndBearing() {
-		if (null != mDestination && null != mMapCenter) {
-			mDistanceToDestinationMeters = (int) mMapCenter.distanceTo(mDestination);
-			buildDrawCacheForDistance();
-			mBearingToDestination = mMapCenter.bearingTo(mDestination);
-		}
-	}
 
 	private String buildDistanceString() {
 		float distance = mDistanceToDestinationMeters;
@@ -321,23 +299,30 @@ public class RadarView extends View {
 		canvas.drawText(mDistanceToDestinationMetersString, 0, mTextBounds.height(), mDestinationTextPaint);
 	}
 
-	public void setMapCenter(final Location location) {
-		mMapCenter = location;
-		GeomagneticField geoField = new GeomagneticField(Double.valueOf(location.getLatitude()).floatValue(), Double.valueOf(location.getLongitude()).floatValue(), Double.valueOf(location.getAltitude()).floatValue(), System.currentTimeMillis());
-		mDeclination = geoField.getDeclination();
-		calculateDestinationAndBearing();
+	/**
+	 * @return formatted String containing the distance to the current destination
+	 */
+	public String getDistanceString(){
+		return mDistanceToDestinationMetersString;
+	}
+		
+	public void setDistance(final int distance){
+		mDistanceToDestinationMeters = distance;
+		mHasDestination = true;
+		buildDrawCacheForDistance();
+	}
+	
+	public void setBearing(final float bearing){
+		mHasDestination = true;
+		mBearingToDestination = bearing;
+	}
+	
+	public void setDelination(final float declination){
+		mDeclination = declination;
 	}
 
-	public Location getMapCenter() {
-		return mMapCenter;
-	}
-
-	public Location getDestination() {
-		return mDestination;
-	}
-
-	public void updateDirection(final double direction) {
-		mAzimuth = direction;
+	public void setAzimuth(final double azimuth) {
+		mAzimuth = azimuth;
 		this.invalidate();
 	}
 }

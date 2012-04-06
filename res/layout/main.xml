@@ -4,35 +4,55 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
-    <de.renard.radar.RadarView
+    <de.renard.radar.views.RadarView
         android:id="@+id/radarView"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_alignParentTop="true" >
-    </de.renard.radar.RadarView>
+    </de.renard.radar.views.RadarView>
 
     <de.renard.radar.views.RotateView
         android:id="@+id/rotateView"
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_below="@+id/radarView" />
 
     <LinearLayout
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content" >
+        android:layout_height="fill_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/radarView"
+        android:layout_toRightOf="@+id/rotateView"
+        android:baselineAligned="true"
+        android:orientation="vertical" >
 
-        <Button
-            android:id="@+id/button_pick_location"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/pick_location" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dip"
+            android:layout_weight="1" >
 
-        <ToggleButton
-            android:id="@+id/button_wake_lock"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/wake_lock" />
+            <Button
+                android:id="@+id/button_pick_location"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/pick_location" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dip"
+            android:layout_weight="1" >
+
+            <ToggleButton
+                android:id="@+id/button_wake_lock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/wake_lock" />
+        </LinearLayout>
     </LinearLayout>
 
 </RelativeLayout>

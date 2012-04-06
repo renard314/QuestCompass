@@ -1,56 +1,31 @@
 package de.renard.radar;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.Editor;
-import android.hardware.Sensor;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.location.Criteria;
-import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ToggleButton;
-import de.renard.radar.CompassSensorListener.DirectionListener;
 import de.renard.radar.map.LocationPickActivity;
-import de.renard.radar.views.RotateView;
 
-public class RadarActivity extends Activity implements DirectionListener, LocationListener {
+public class RadarActivity extends Activity {
 
+	private final static String DEBUG_TAG = RadarActivity.class.getSimpleName();
 	private final static int REQUEST_CODE_LOCATION = 0;
-	private final static int LOCATION_MIN_TIME_MS = 15000;
-	private final static int LOCATION_MIN_DISTANCE_METERS = 0;
 
-	private SensorManager mSensorManager;
-	private Sensor mSensorMagnetic;
-	private Sensor mSensorAcceleration;
-	private RadarView mRadarView;
-	private RotateView mRotateView;
-	private SensorEventListener mListener;
-	private LocationManager mLocationManager;
-	private String mLocationProvider;
-	private SharedPreferences mSharedPrefs;
-
+	private SensorDataManager mLocationDataManager;
+	
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		mSensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
-		mSensorAcceleration = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-		mSensorMagnetic = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		setContentView(R.layout.main);
-		mRadarView = (RadarView) findViewById(R.id.radarView);
-		mRotateView = (RotateView) findViewById(R.id.rotateView);
+		mLocationDataManager = new SensorDataManager(this);
+		
 		ToggleButton toggle = (ToggleButton) findViewById(R.id.button_wake_lock);
 		toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
@@ -64,8 +39,6 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 
 			}
 		});
-
-		mListener = new CompassSensorListener(this, (WindowManager) getSystemService(WINDOW_SERVICE));
 		Button b = (Button) findViewById(R.id.button_pick_location);
 		b.setOnClickListener(new View.OnClickListener() {
 
@@ -75,46 +48,16 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 				startActivityForResult(i, REQUEST_CODE_LOCATION);
 			}
 		});
-		getLasKnownLocation();
 
-		mSharedPrefs = getSharedPreferences(RadarActivity.class.getSimpleName(), MODE_PRIVATE);
-
-		restoreDestionation();
+		Log.i(DEBUG_TAG, "onCreate()");
 	}
 
-	private void restoreDestionation() {
-		if (mSharedPrefs.contains(LocationPickActivity.EXTRA_LATITUDE)) {
-			final int latitudeE6 = mSharedPrefs.getInt(LocationPickActivity.EXTRA_LATITUDE, 0);
-			final int longitudeE6 = mSharedPrefs.getInt(LocationPickActivity.EXTRA_LONGITUDE, 0);
-			mRadarView.setDestination(latitudeE6, longitudeE6);
-		}
-	}
-
-	private void saveDestination() {
-		if (null != mRadarView.getDestination()) {
-			final Editor editor = mSharedPrefs.edit();
-			final int latitudeE6 = (int) (mRadarView.getDestination().getLatitude() * 1E6);
-			final int longitudeE6 = (int) (mRadarView.getDestination().getLongitude() * 1E6);
-			editor.putInt(LocationPickActivity.EXTRA_LATITUDE, latitudeE6);
-			editor.putInt(LocationPickActivity.EXTRA_LONGITUDE, longitudeE6);
-			editor.commit();
-		}
-	}
-	
 	@Override
 	public void onBackPressed() {
 		super.onBackPressed();
-		saveDestination();
+		mLocationDataManager.saveDestination();
 	}
 
-	private void getLasKnownLocation() {
-		mLocationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-		mLocationProvider = mLocationManager.getBestProvider(new Criteria(), false);
-		Location location = mLocationManager.getLastKnownLocation(mLocationProvider);
-		if (null != location) {
-			mRadarView.setMapCenter(location);
-		}
-	}
 
 	@Override
 	protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
@@ -123,7 +66,7 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 			case REQUEST_CODE_LOCATION:
 				final int latE6 = data.getIntExtra(LocationPickActivity.EXTRA_LATITUDE, -1);
 				final int longE6 = data.getIntExtra(LocationPickActivity.EXTRA_LONGITUDE, -1);
-				mRadarView.setDestination(latE6, longE6);
+				mLocationDataManager.setDestination(latE6, longE6);
 			}
 		}
 	}
@@ -131,63 +74,22 @@ public class RadarActivity extends Activity implements DirectionListener, Locati
 	@Override
 	protected void onResume() {
 		super.onResume();
-		mSensorManager.registerListener(mListener, mSensorAcceleration, SensorManager.SENSOR_DELAY_GAME);
-		mSensorManager.registerListener(mListener, mSensorMagnetic, SensorManager.SENSOR_DELAY_GAME);
-		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
-		mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
+		mLocationDataManager.onResume();
 	}
 
 	@Override
 	protected void onPause() {
 		super.onPause();
-		mSensorManager.unregisterListener(mListener);
-		mLocationManager.removeUpdates(this);
-	}
-	
-	@Override
-	public void onDirectionChanged(double bearing) {
-		mRadarView.updateDirection(bearing);
-	}
-	
-
-	@Override
-	public void onLocationChanged(Location location) {
-		Log.i("RadarActivity", location.toString());
-		mRadarView.setMapCenter(location);
+		mLocationDataManager.onPause();
 	}
 
-	@Override
-	public void onStatusChanged(String provider, int status, Bundle extras) {
-		if (extras != null) {
-			final Object sats = extras.get("satellites");
-			if (sats != null) {
-				Log.i("RadarActivity", sats.toString());
-			}
-		}
-	}
-	
+	/**
+	 * remember target destination
+	 */
 	@Override
 	protected void onSaveInstanceState(Bundle outState) {
 		super.onSaveInstanceState(outState);
-		saveDestination();
-	}
-
-	@Override
-	public void onProviderEnabled(String provider) {
-	}
-
-	@Override
-	public void onProviderDisabled(String provider) {
-	}
-
-	@Override
-	public void onRollChanged(float roll) {
-		mRotateView.setRotation(roll);
-	}
-
-	@Override
-	public void onPitchChanged(float pitch) {
-		
+		mLocationDataManager.saveDestination();
 	}
 
 }
