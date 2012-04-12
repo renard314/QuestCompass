@@ -6,7 +6,6 @@ import android.graphics.BlurMaskFilter.Blur;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Paint.Align;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -28,6 +27,7 @@ public class RotateView extends View {
 	private Rect mRect = new Rect();
 	private ObjectAnimator mAnimator;
 	private int mMinimumSize=Integer.MAX_VALUE;
+	private float mTargetDegree;
 	
 	@SuppressWarnings("unused")
 	private final static String DEBUG_TAG =  RotateView.class.getSimpleName();
@@ -163,6 +163,9 @@ public class RotateView extends View {
 	}
 
 	public void startRotateAnimation(final float degrees) {
+		if (mTargetDegree==degrees){
+			return;
+		}
 		if (mAnimator != null && mAnimator.isRunning()) {
 			mAnimator.addListener(new AnimatorListener() {
 
@@ -190,7 +193,18 @@ public class RotateView extends View {
 		}
 	}
 
-	private void startAnimation(final float degrees) {
+	private void startAnimation(float degrees) {
+		if (mRotation>180 && degrees==0){
+			degrees =  360;
+		}
+		if (degrees>180 && mRotation==00){
+			mRotation = 360;
+		}
+		if (degrees<180 && mRotation==360){
+			mRotation=0;
+		}
+		//Log.i("rotating","from: " + mRotation + " to: " +degrees);
+		mTargetDegree = degrees;
 		mAnimator = ObjectAnimator.ofFloat(this, "orienation", mRotation, degrees);
 		mAnimator.setDuration(400);
 		mAnimator.start();
@@ -221,7 +235,7 @@ public class RotateView extends View {
 		//Log.i(DEBUG_TAG,"width = " + getWidth() +" height = "+getHeight());
 		canvas.save();
 		canvas.rotate(mRotation, r, r);
-		canvas.drawRect(mRect, mCirclePaint);
+		//canvas.drawRect(mRect, mCirclePaint);
 		//canvas.drawCircle(r, r, r, mCirclePaint);
 		if (mDistanceText != null) {
 			canvas.drawText(mDistanceText, mRect.centerX(), mRect.top, mLabelPaint);

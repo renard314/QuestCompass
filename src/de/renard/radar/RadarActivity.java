@@ -18,14 +18,14 @@ public class RadarActivity extends Activity {
 	private final static int REQUEST_CODE_LOCATION = 0;
 
 	private SensorDataManager mLocationDataManager;
-	
+
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 		mLocationDataManager = new SensorDataManager(this);
-		
+
 		ToggleButton toggle = (ToggleButton) findViewById(R.id.button_wake_lock);
 		toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
@@ -48,16 +48,16 @@ public class RadarActivity extends Activity {
 				startActivityForResult(i, REQUEST_CODE_LOCATION);
 			}
 		});
-
+		
 		Log.i(DEBUG_TAG, "onCreate()");
 	}
+	
 
 	@Override
 	public void onBackPressed() {
 		super.onBackPressed();
 		mLocationDataManager.saveDestination();
 	}
-
 
 	@Override
 	protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
@@ -82,6 +82,7 @@ public class RadarActivity extends Activity {
 		super.onPause();
 		mLocationDataManager.onPause();
 	}
+	
 
 	/**
 	 * remember target destination

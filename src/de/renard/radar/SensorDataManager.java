@@ -5,15 +5,17 @@ import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.OrientationEventListener;
+import android.view.Surface;
+import android.view.WindowManager;
 import de.renard.radar.CompassSensorListener.DirectionListener;
 import de.renard.radar.ScreenOrienationEventListener.OnScreenOrientationChangeListener;
 import de.renard.radar.map.LocationPickActivity;
@@ -24,13 +26,14 @@ import de.renard.radar.views.RotateView;
  * receives data from device sensors /gps and updates all views
  */
 public class SensorDataManager implements OnScreenOrientationChangeListener, DirectionListener, LocationListener {
+	@SuppressWarnings("unused")
 	private final static String DEBUG_TAG = SensorDataManager.class.getSimpleName();			
 	
 	private SensorManager mSensorManager;
 	private Sensor mSensorMagnetic;
 	private Sensor mSensorAcceleration;
 	private OrientationEventListener mOrientationListener;
-	private SensorEventListener mListener;
+	private CompassSensorListener mListener;
 	private LocationManager mLocationManager;
 	private String mLocationProvider;
 	private SharedPreferences mSharedPrefs;
@@ -41,7 +44,9 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 
 	private RadarView mRadarView;
 	private RotateView mRotateView;
-
+	
+	private final int mRotationOffset;
+	
 	private final static int LOCATION_MIN_TIME_MS = 15000;
 	private final static int LOCATION_MIN_DISTANCE_METERS = 0;
 
@@ -55,10 +60,28 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 		mSharedPrefs = activity.getSharedPreferences(RadarActivity.class.getSimpleName(), Context.MODE_PRIVATE);
 		mRadarView = (RadarView) activity.findViewById(R.id.radarView);
 		mRotateView = (RotateView) activity.findViewById(R.id.rotateView);
+		
+		mRotationOffset = determineNaturalOrientationOffset(activity);
 		restoreDestionation();
 		getLastKnownLocation();
 	}
 
+	private int determineNaturalOrientationOffset(Context c){
+		WindowManager wm = (WindowManager)c.getSystemService(Context.WINDOW_SERVICE);
+		int rotation = wm.getDefaultDisplay().getRotation();
+		switch(rotation){
+		case Surface.ROTATION_0:
+			return 0;
+		case Surface.ROTATION_90:
+			return  90;
+		case Surface.ROTATION_180:
+			return 180;
+		case Surface.ROTATION_270:
+			return 270;
+		}
+		return 0;
+	}
+	
 	private void getLastKnownLocation() {
 		mLocationProvider = mLocationManager.getBestProvider(new Criteria(), false);
 		Location location = mLocationManager.getLastKnownLocation(mLocationProvider);
@@ -89,7 +112,11 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 			editor.putInt(LocationPickActivity.EXTRA_LONGITUDE, longitudeE6);
 			editor.commit();
 		}
+
+	
 	}
+	
+
 
 	/**
 	 * stop sensors
@@ -135,8 +162,40 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 	 */
 	@Override
 	public void onScreenOrientationChanged(int orientation) {
-		mRotateView.startRotateAnimation(orientation);
+
+		int rotation = 0;
+		
+		switch (orientation) {
+		case Surface.ROTATION_0:
+			Log.i("onScreenOrientationChanged","Rotation0");
+			rotation = 0;
+			break;
+		case Surface.ROTATION_90:
+			rotation = 270;
+			Log.i("onScreenOrientationChanged","Rotation90");
+			break;
+		case Surface.ROTATION_180:
+			rotation = 180;
+			Log.i("onScreenOrientationChanged","Rotation180");
+			break;
+		case Surface.ROTATION_270:
+			rotation = 90;
+			Log.i("onScreenOrientationChanged","Rotation270");
+			break;
+		}
+		
+		rotation += (360-mRotationOffset);
+		rotation = rotation%360;
+		Log.i("onScreenOrientationChanged","Rotation: " + rotation);
+		mRotateView.startRotateAnimation(rotation);
+		
 	}
+	
+	@Override
+	public void onScreenRotationChanged(int degrees) {
+		mListener.setScreenOrientation(degrees);		
+	}
+
 
 
 	/*********************************************
@@ -148,7 +207,8 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 	 */
 	@Override
 	public void onDirectionChanged(double bearing) {
-		mRadarView.setAzimuth(bearing);
+		float degrees0to360 = (float)(bearing+mRotationOffset);		
+		mRadarView.setAzimuth(degrees0to360);
 	}
 
 	/**
@@ -200,4 +260,5 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 	@Override
 	public void onProviderDisabled(String provider) {
 	}
+
 }

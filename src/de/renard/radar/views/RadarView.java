@@ -198,8 +198,6 @@ public class RadarView extends View {
 		// draw cirlce
 		canvas.translate(radius, radius);
 		canvas.drawCircle(0, 0, r, mCirclePaint);
-		// draw needle
-		// canvas.drawLine(0, 0, 0, -r, mCirclePaint);
 		drawMarkers(canvas, r);
 		mCompassRadius = r;
 	}
@@ -221,6 +219,9 @@ public class RadarView extends View {
 		if (true == mHasDestination) {
 			canvas.translate(radius, radius);
 			canvas.rotate(mBearingToDestination+180);
+			// draw needle
+			canvas.drawLine(0, 0, 0, mCompassRadius, mCirclePaint);
+
 			canvas.rotate((float) -rotateAngle - mBearingToDestination-180 , 0, mCompassRadius);
 			canvas.drawCircle(0, mCompassRadius, 5, mCirclePaintDestination);
 			canvas.drawBitmap(mDrawingCacheDistance, -mTextBounds.width() / 2, mCompassRadius - sDirectionTextHeight, mDrawingCachePaint);

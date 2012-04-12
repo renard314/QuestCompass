@@ -19,6 +19,7 @@ public class ScreenOrienationEventListener extends OrientationEventListener {
 
 	public interface OnScreenOrientationChangeListener {
 		void onScreenOrientationChanged(final int orientation);
+		void onScreenRotationChanged(final int degrees);
 	};
 
 	private final OnScreenOrientationChangeListener mListener;
@@ -47,25 +48,12 @@ public class ScreenOrienationEventListener extends OrientationEventListener {
 			return;
 		}
 		final int newOrientation = getOrientationFromDegrees(orientation);
+		mListener.onScreenRotationChanged(orientation);
 
 		if (mCurrentOrientation == newOrientation) {
 			return;
 		}
-
-		switch (newOrientation) {
-		case Surface.ROTATION_0:
-			mListener.onScreenOrientationChanged(0);
-			break;
-		case Surface.ROTATION_90:
-			mListener.onScreenOrientationChanged(-90);
-			break;
-		case Surface.ROTATION_180:
-			mListener.onScreenOrientationChanged(180);
-			break;
-		case Surface.ROTATION_270:
-			mListener.onScreenOrientationChanged(90);
-			break;
-		}
+		mListener.onScreenOrientationChanged(newOrientation);
 		mCurrentOrientation = newOrientation;
 	}
 }
