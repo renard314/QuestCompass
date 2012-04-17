@@ -11,7 +11,6 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.OrientationEventListener;
 import android.view.Surface;
@@ -240,6 +239,7 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 	 * GPS Callbacks
 	 *********************************************/
 
+	
 	@Override
 	public void onLocationChanged(Location location) {
 		Log.i("RadarActivity", location.toString());

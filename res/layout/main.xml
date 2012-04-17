@@ -19,6 +19,7 @@
         android:layout_below="@+id/radarView" />
 
     <LinearLayout
+        android:id="@+id/linearLayout1"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_alignParentBottom="true"
@@ -31,7 +32,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dip"
-            android:layout_weight="1">
+            android:layout_weight="1" >
 
             <Button
                 android:id="@+id/button_pick_location"

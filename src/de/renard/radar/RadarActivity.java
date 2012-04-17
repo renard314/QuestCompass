@@ -9,6 +9,7 @@ import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.ProgressBar;
 import android.widget.ToggleButton;
 import de.renard.radar.map.LocationPickActivity;
 
@@ -83,7 +84,6 @@ public class RadarActivity extends Activity {
 		mLocationDataManager.onPause();
 	}
 	
-
 	/**
 	 * remember target destination
 	 */
