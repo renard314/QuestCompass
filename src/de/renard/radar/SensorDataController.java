@@ -3,6 +3,7 @@ package de.renard.radar;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.graphics.Color;
 import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
@@ -15,6 +16,7 @@ import android.util.Log;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.WindowManager;
+import android.widget.TextView;
 import de.renard.radar.CompassSensorListener.DirectionListener;
 import de.renard.radar.ScreenOrienationEventListener.OnScreenOrientationChangeListener;
 import de.renard.radar.map.LocationPickActivity;
@@ -24,9 +26,8 @@ import de.renard.radar.views.RotateView;
 /**
  * receives data from device sensors /gps and updates all views
  */
-public class SensorDataManager implements OnScreenOrientationChangeListener, DirectionListener, LocationListener {
-	@SuppressWarnings("unused")
-	private final static String DEBUG_TAG = SensorDataManager.class.getSimpleName();			
+public class SensorDataController implements OnScreenOrientationChangeListener, DirectionListener, LocationListener {
+	private final static String DEBUG_TAG = SensorDataController.class.getSimpleName();			
 	
 	private SensorManager mSensorManager;
 	private Sensor mSensorMagnetic;
@@ -42,14 +43,15 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 
 
 	private RadarView mRadarView;
-	private RotateView mRotateView;
-	
+	private RotateView mRotateViewDistance;
+	private RotateView mRotateViewButtons;
+	private TextView mTextViewDistance;
 	private final int mRotationOffset;
 	
 	private final static int LOCATION_MIN_TIME_MS = 15000;
 	private final static int LOCATION_MIN_DISTANCE_METERS = 0;
 
-	public SensorDataManager(RadarActivity activity) {
+	public SensorDataController(RadarActivity activity) {
 		mSensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
 		mLocationManager = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
 		mSensorAcceleration = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -58,8 +60,10 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 		mListener = new CompassSensorListener(this);
 		mSharedPrefs = activity.getSharedPreferences(RadarActivity.class.getSimpleName(), Context.MODE_PRIVATE);
 		mRadarView = (RadarView) activity.findViewById(R.id.radarView);
-		mRotateView = (RotateView) activity.findViewById(R.id.rotateView);
-		
+		mRotateViewDistance = (RotateView) activity.findViewById(R.id.rotateView);
+		mRotateViewButtons = (RotateView) activity.findViewById(R.id.rotateView_buttons);
+		mTextViewDistance = (TextView) activity.findViewById(R.id.textView_distance);
+
 		mRotationOffset = determineNaturalOrientationOffset(activity);
 		restoreDestionation();
 		getLastKnownLocation();
@@ -166,28 +170,24 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 		
 		switch (orientation) {
 		case Surface.ROTATION_0:
-			Log.i("onScreenOrientationChanged","Rotation0");
 			rotation = 0;
 			break;
 		case Surface.ROTATION_90:
 			rotation = 270;
-			Log.i("onScreenOrientationChanged","Rotation90");
 			break;
 		case Surface.ROTATION_180:
 			rotation = 180;
-			Log.i("onScreenOrientationChanged","Rotation180");
 			break;
 		case Surface.ROTATION_270:
 			rotation = 90;
-			Log.i("onScreenOrientationChanged","Rotation270");
 			break;
 		}
 		
 		rotation += (360-mRotationOffset);
 		rotation = rotation%360;
 		Log.i("onScreenOrientationChanged","Rotation: " + rotation);
-		mRotateView.startRotateAnimation(rotation);
-		
+		mRotateViewDistance.startRotateAnimation(rotation);		
+		mRotateViewButtons.startRotateAnimation(rotation);
 	}
 	
 	@Override
@@ -211,6 +211,40 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 	}
 
 	/**
+	 * 
+	 */
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		final float frac = 255/4f;
+		final int a=0xff;
+		final int b=0x00;
+		int r = 0;
+		int g = 0;
+		int index = 0;
+		switch (accuracy) {
+		case SensorManager.SENSOR_STATUS_ACCURACY_HIGH:
+			Log.i(DEBUG_TAG,"SENSOR_STATUS_ACCURACY_HIGH");
+			index = 3;
+			break;
+		case SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM:
+			Log.i(DEBUG_TAG,"SENSOR_STATUS_ACCURACY_MEDIUM");
+			index = 2;
+			break;
+		case SensorManager.SENSOR_STATUS_ACCURACY_LOW:
+			Log.i(DEBUG_TAG,"SENSOR_STATUS_ACCURACY_LOW");
+			index = 1;
+			break;
+		case SensorManager.SENSOR_STATUS_UNRELIABLE:
+			Log.i(DEBUG_TAG,"SENSOR_STATUS_UNRELIABLE");
+			index = 0;
+			break;
+		}
+		r = (int) ((3-index)*frac);
+		g = (int) (index*frac);
+		mRadarView.setLight(Color.argb(a, r, g, b), 1);
+
+	}
+	/**
 	 * roll in degrees
 	 */
 	@Override
@@ -228,10 +262,8 @@ public class SensorDataManager implements OnScreenOrientationChangeListener, Dir
 	private void calculateDestinationAndBearing(){
 		if (null != mDestination && null != mMapCenter) {
 			final int distance = (int) mMapCenter.distanceTo(mDestination);
-			mRadarView.setDistance(distance);
-			mRotateView.setDistance(distance);
-			mRotateView.setSpeedText(mMapCenter.getSpeed());
 			mRadarView.setBearing(mMapCenter.bearingTo(mDestination));
+			mTextViewDistance.setText(Util.buildDistanceString(distance));
 		}
 	}
 

@@ -9,7 +9,6 @@ import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
-import android.widget.ProgressBar;
 import android.widget.ToggleButton;
 import de.renard.radar.map.LocationPickActivity;
 
@@ -18,14 +17,14 @@ public class RadarActivity extends Activity {
 	private final static String DEBUG_TAG = RadarActivity.class.getSimpleName();
 	private final static int REQUEST_CODE_LOCATION = 0;
 
-	private SensorDataManager mLocationDataManager;
+	private SensorDataController mLocationDataManager;
 
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
-		mLocationDataManager = new SensorDataManager(this);
+		mLocationDataManager = new SensorDataController(this);
 
 		ToggleButton toggle = (ToggleButton) findViewById(R.id.button_wake_lock);
 		toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {

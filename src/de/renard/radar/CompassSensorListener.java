@@ -26,6 +26,8 @@ public class CompassSensorListener implements SensorEventListener {
 		void onRollChanged(final float roll);
 
 		void onPitchChanged(final float pitch);
+		
+		void onAccuracyChanged(Sensor sensor, int accuracy);
 	}
 
 	// number of values which are averaged
@@ -40,7 +42,7 @@ public class CompassSensorListener implements SensorEventListener {
 	private final float[] mMagnetic = new float[3];
 	private final float[] mAcceleration = new float[3];
 	float[] mMappedValues = new float[3];
-	float[] mRotationMatrix = new float[9];
+	float[] mR = new float[9];
 	float[] mMappedRotationMatrix = new float[9];
 
 	private final DirectionListener mListener;
@@ -89,7 +91,7 @@ public class CompassSensorListener implements SensorEventListener {
 
 	private float[] calculateOrientation() {
 
-		if (SensorManager.getRotationMatrix(mRotationMatrix, null, mAcceleration, mMagnetic)) {
+		if (SensorManager.getRotationMatrix(mR, null, mAcceleration, mMagnetic)) {
 
 			// switch (mScreenOrientation) {
 			// // portrait - normal
@@ -125,7 +127,7 @@ public class CompassSensorListener implements SensorEventListener {
 			// SensorManager.AXIS_X, SensorManager.AXIS_Z,
 			// mMappedRotationMatrix);
 
-			SensorManager.getOrientation(mRotationMatrix, mMappedValues);
+			SensorManager.getOrientation(mR, mMappedValues);
 
 			// float degrees0to360 =
 			// (float)(Math.toDegrees(mMappedValues[0])+180);
@@ -145,16 +147,8 @@ public class CompassSensorListener implements SensorEventListener {
 
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		switch (accuracy) {
-		case SensorManager.SENSOR_STATUS_ACCURACY_HIGH:
-			break;
-		case SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM:
-			break;
-		case SensorManager.SENSOR_STATUS_ACCURACY_LOW:
-			break;
-		case SensorManager.SENSOR_STATUS_UNRELIABLE:
-			break;
-		}
+		mListener.onAccuracyChanged(sensor, accuracy);
+	
 
 	}
 

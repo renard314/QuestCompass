@@ -5,4 +5,6 @@
     <string name="wake_lock">Display</string>
     <string name="pick_new_location">New Target</string>
     <string name="cancel">Cancel</string>
+    <string name="toggle_gps">GPS</string>
+    <string name="compass_accuracy">Status Magnetsensor</string>
 </resources>

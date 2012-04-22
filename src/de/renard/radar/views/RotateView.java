@@ -1,169 +1,45 @@
 package de.renard.radar.views;
 
 import android.content.Context;
-import android.graphics.BlurMaskFilter;
-import android.graphics.BlurMaskFilter.Blur;
 import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.Rect;
+import android.graphics.Matrix;
+import android.graphics.RectF;
 import android.util.AttributeSet;
-import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 import com.nineoldandroids.animation.Animator;
 import com.nineoldandroids.animation.Animator.AnimatorListener;
 import com.nineoldandroids.animation.ObjectAnimator;
 
-public class RotateView extends View {
+/**
+ * will center its only child and fit it into its center square. Use
+ * startRotateAnimation to rotate the child
+ * 
+ * @author renard
+ * 
+ */
+public class RotateView extends FrameLayout {
 
-	private final Rect mDisplayFrame = new Rect();
-	private final Paint mCirclePaint;
-	private final Paint mLabelPaint;
-	private final Paint mDescriptionPaint;
 	private float mRotation;
-	private String mDistanceText;
-	private String mSpeedText;
-	private Rect mRect = new Rect();
+	private final Matrix mRotationMatrix = new Matrix();
+	private final Matrix mInvertRotationMatrix= new Matrix();
 	private ObjectAnimator mAnimator;
-	private int mMinimumSize=Integer.MAX_VALUE;
 	private float mTargetDegree;
-	
+	private RectF mChildBounds = new RectF();
+	private float[] mMappedTouchPoint = new float[2];
+
 	@SuppressWarnings("unused")
-	private final static String DEBUG_TAG =  RotateView.class.getSimpleName();
+	private final static String DEBUG_TAG = RotateView.class.getSimpleName();
 
-
-	
 	public RotateView(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		mCirclePaint = new Paint() {
-			{
-				setColor(Color.WHITE);
-				setStyle(Paint.Style.STROKE);
-				setAntiAlias(true);
-				setStrokeWidth(3);
-				setMaskFilter(new BlurMaskFilter(2, Blur.SOLID));
-
-			}
-		};
-		mLabelPaint = new Paint() {
-			{
-				setColor(Color.WHITE);
-				setAntiAlias(true);
-				setStrokeWidth(3);
-				setTextSize(40);
-				setTextAlign(Align.CENTER);
-				setMaskFilter(new BlurMaskFilter(2, Blur.SOLID));
-
-			}
-		};
-
-		mDescriptionPaint = new Paint() {
-			{
-				setColor(Color.DKGRAY);
-				setAntiAlias(true);
-				setStrokeWidth(2);
-				setTextSize(16);
-				setTextAlign(Align.CENTER);
-				setMaskFilter(new BlurMaskFilter(1, Blur.SOLID));
-
-			}
-		};
-
-	}
-
-	/**
-	 * try to be a square view
-	 */
-	@Override
-	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-		final int heightMode = MeasureSpec.getMode(heightMeasureSpec);
-		final int widthMode = MeasureSpec.getMode(widthMeasureSpec);
-		int width = MeasureSpec.getSize(widthMeasureSpec);
-		int height = MeasureSpec.getSize(heightMeasureSpec);
-		getWindowVisibleDisplayFrame(mDisplayFrame);
-		if (heightMode == MeasureSpec.UNSPECIFIED) {
-			height = mDisplayFrame.height();
-		}
-		if (widthMode == MeasureSpec.UNSPECIFIED) {
-			width = mDisplayFrame.width();
-		}
-		
-		mMinimumSize = Math.min(mMinimumSize, width);
-		mMinimumSize = Math.min(mMinimumSize, height);
-		if (heightMode == MeasureSpec.UNSPECIFIED){
-			Log.i(DEBUG_TAG,"height unspecified = " + height);
-		}
-		if (heightMode == MeasureSpec.AT_MOST){
-			Log.i(DEBUG_TAG,"height atMost = " + height);
-		}
-		if (heightMode == MeasureSpec.EXACTLY){
-			Log.i(DEBUG_TAG,"height exactly = "+ height);
-		}
-		if (widthMode == MeasureSpec.UNSPECIFIED){
-			Log.i(DEBUG_TAG,"width unspecified = " + width);
-		}
-		if (widthMode == MeasureSpec.AT_MOST){
-			Log.i(DEBUG_TAG,"width atMost = "+width);
-		}
-		if (widthMode == MeasureSpec.EXACTLY){
-			Log.i(DEBUG_TAG,"width exactly= "+width);
-		}
-
-		int size = Math.min(width, height);
-		size = Math.min(mMinimumSize, size);
-		Log.i(DEBUG_TAG,"onMeasure: "+size);
-		setMeasuredDimension(size, size);
-	}
-	
-	private String buildDistanceString(final float distanceMeters) {
-		float distance = distanceMeters;
-		String format;
-		String unit;
-		if (distanceMeters >= 1000) {
-			distance /= 1000;
-			unit = "km";
-			format = "%,.2f%s";
-		} else {
-			unit = "m";
-			format = "%,.0f%s";
-		}
-		return String.format(format, distance, unit);
-	}
-
-	private String buildSpeedString(final float speedMPerSecond) {
-		float speed = speedMPerSecond * 3.6f;
-		String format = "%.1f%s";
-		String unit = "Km/s";
-		return String.format(format, speed, unit);
-	}
-	private void findTextSize() {
-		if (mDistanceText != null && mRect.width() > 0 && mRect.height() > 0) {
-			final int maxWidth = mRect.width();
-			final int maxHeight = mRect.height();
-			Rect textBounds = new Rect();
-			int textSize = 60;
-			mLabelPaint.setTextSize(textSize);
-			mLabelPaint.getTextBounds(mDistanceText, 0, mDistanceText.length(), textBounds);
-			while (textBounds.width() > maxWidth && textBounds.height() > maxHeight) {
-				mLabelPaint.setTextSize(textSize -= 2);
-				mLabelPaint.getTextBounds(mDistanceText, 0, mDistanceText.length(), textBounds);
-			}
-		}
-	}
-
-	public void setDistance(final float distance) {
-		mDistanceText = buildDistanceString(distance);
-		findTextSize();
-		this.invalidate();
-	}
-	public void setSpeedText(final float speed) {
-		mSpeedText = buildSpeedString(speed);
-		invalidate();
 	}
 
 	public void startRotateAnimation(final float degrees) {
-		if (mTargetDegree==degrees){
+		if (mTargetDegree == degrees) {
 			return;
 		}
 		if (mAnimator != null && mAnimator.isRunning()) {
@@ -194,16 +70,15 @@ public class RotateView extends View {
 	}
 
 	private void startAnimation(float degrees) {
-		if (mRotation>180 && degrees==0){
-			degrees =  360;
+		if (mRotation > 180 && degrees == 0) {
+			degrees = 360;
 		}
-		if (degrees>180 && mRotation==00){
+		if (degrees > 180 && mRotation == 00) {
 			mRotation = 360;
 		}
-		if (degrees<180 && mRotation==360){
-			mRotation=0;
+		if (degrees < 180 && mRotation == 360) {
+			mRotation = 0;
 		}
-		//Log.i("rotating","from: " + mRotation + " to: " +degrees);
 		mTargetDegree = degrees;
 		mAnimator = ObjectAnimator.ofFloat(this, "orienation", mRotation, degrees);
 		mAnimator.setDuration(400);
@@ -211,40 +86,89 @@ public class RotateView extends View {
 	}
 
 	public void setOrienation(float rotation) {
+		mRotationMatrix.reset();
+		mRotationMatrix.postRotate(rotation, mChildBounds.centerX(), mChildBounds.centerY());
+		mRotationMatrix.invert(mInvertRotationMatrix);
 		mRotation = rotation;
 		this.invalidate();
 	}
 
 	@Override
-	protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
-		super.onLayout(changed, left, top, right, bottom);
-		final float halfWidth = getWidth() / 2;
-		final float halfHeight = getHeight() / 2;
-		final float r = Math.min(halfHeight, halfWidth);
-		final float h = 60f;
-		final float offsetx = (float) (r - Math.sqrt(r * r - h * h));
-		mRect.set((int) offsetx, (int) (r - h), (int) (2 * r - offsetx), (int) (r + h));
-		findTextSize();
+	public boolean onInterceptTouchEvent(MotionEvent ev) {
+		mMappedTouchPoint[0] = ev.getX(); 
+		mMappedTouchPoint[1] = ev.getY(); 
+		mInvertRotationMatrix.mapPoints(mMappedTouchPoint);
+		ev.setLocation(mMappedTouchPoint[0], mMappedTouchPoint[1]);
+		return super.onInterceptTouchEvent(ev);
 	}
 
 	@Override
-	protected void onDraw(Canvas canvas) {
-		final float halfWidth = getWidth() / 2;
-		final float halfHeight = getHeight() / 2;
-		final float r = Math.min(halfHeight, halfWidth);
-		//Log.i(DEBUG_TAG,"width = " + getWidth() +" height = "+getHeight());
+	protected boolean drawChild(final Canvas canvas, final View child, final long drawingTime) {
 		canvas.save();
-		canvas.rotate(mRotation, r, r);
-		//canvas.drawRect(mRect, mCirclePaint);
-		//canvas.drawCircle(r, r, r, mCirclePaint);
-		if (mDistanceText != null) {
-			canvas.drawText(mDistanceText, mRect.centerX(), mRect.top, mLabelPaint);
-		}
-		if (mSpeedText!=null){
-			canvas.drawText(mSpeedText, mRect.centerX(), mRect.bottom, mLabelPaint);
-		}
+		//canvas.rotate(mRotation, mChildBounds.centerX(), mChildBounds.centerY());
+		canvas.concat(mRotationMatrix);
+		final boolean result = super.drawChild(canvas, child, drawingTime);
 		canvas.restore();
+		return result;
+	}
 
+	@Override
+	protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+		final int w = right - left;
+		final int h = bottom - top;
+		if (w != 0 && h != 0) {
+			// calculate centered maximum size square rect inside view bounds
+			final float size = Math.min(w, h);
+			final float l = (w - size) / 2;
+			final float t = (h - size) / 2;
+			mChildBounds.set(l, t, l + size, t + size);
+			final View child = getChildAt(0);
+			int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec((int) size, MeasureSpec.AT_MOST);
+			int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec((int) size, MeasureSpec.AT_MOST);
+			child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+
+			final float childHeight = child.getMeasuredHeight();
+			final float childWidth = child.getMeasuredWidth();
+			final float childLeft = mChildBounds.centerX() - childWidth / 2;
+			final float childTop = mChildBounds.centerY() - childHeight / 2;
+			child.layout((int) childLeft, (int) childTop, (int) (childLeft + childWidth), (int) (childTop + childHeight));
+		}
+	}
+
+	@Override
+	public void addView(View child) {
+		if (getChildCount() > 0) {
+			throw new IllegalStateException("RotateView can host only one direct child");
+		}
+
+		super.addView(child);
+	}
+
+	@Override
+	public void addView(View child, int index) {
+		if (getChildCount() > 0) {
+			throw new IllegalStateException("RotateView can host only one direct child");
+		}
+
+		super.addView(child, index);
+	}
+
+	@Override
+	public void addView(View child, ViewGroup.LayoutParams params) {
+		if (getChildCount() > 0) {
+			throw new IllegalStateException("RotateView can host only one direct child");
+		}
+
+		super.addView(child, params);
+	}
+
+	@Override
+	public void addView(View child, int index, ViewGroup.LayoutParams params) {
+		if (getChildCount() > 0) {
+			throw new IllegalStateException("RotateView can host only one direct child");
+		}
+
+		super.addView(child, index, params);
 	}
 
 }
