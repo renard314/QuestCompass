@@ -8,27 +8,36 @@ import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.location.Criteria;
+import android.location.GpsSatellite;
+import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.WindowManager;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 import de.renard.radar.CompassSensorListener.DirectionListener;
 import de.renard.radar.ScreenOrienationEventListener.OnScreenOrientationChangeListener;
 import de.renard.radar.map.LocationPickActivity;
 import de.renard.radar.views.RadarView;
 import de.renard.radar.views.RotateView;
+import de.renard.views.ledlight.LEDLightView;
 
 /**
  * receives data from device sensors /gps and updates all views
  */
-public class SensorDataController implements OnScreenOrientationChangeListener, DirectionListener, LocationListener {
-	private final static String DEBUG_TAG = SensorDataController.class.getSimpleName();			
-	
+public class SensorDataController implements OnScreenOrientationChangeListener, DirectionListener, LocationListener, GpsStatus.Listener {
+	private final static String DEBUG_TAG = SensorDataController.class.getSimpleName();
+
+	private boolean mGPSOn = false;
+
 	private SensorManager mSensorManager;
 	private Sensor mSensorMagnetic;
 	private Sensor mSensorAcceleration;
@@ -37,17 +46,28 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	private LocationManager mLocationManager;
 	private String mLocationProvider;
 	private SharedPreferences mSharedPrefs;
-	
+
 	private Location mDestination = null;
 	private Location mMapCenter;
 
-
 	private RadarView mRadarView;
+	private RotateView mRotateViewSpeed;
 	private RotateView mRotateViewDistance;
-	private RotateView mRotateViewButtons;
+	private RotateView mRotateViewWakeLock;
+	private RotateView mRotateViewLocation;
+	private RotateView mRotateViewGPS;
 	private TextView mTextViewDistance;
+	private TextView mTextViewSpeed;
+	private ToggleButton mToggleButtonGps;
+	private LEDLightView mGPSLight;
 	private final int mRotationOffset;
-	
+
+	private long mLastLocationMillis;
+
+	private Location mLastLocation;
+
+	private int mSatelliteNumber;
+
 	private final static int LOCATION_MIN_TIME_MS = 15000;
 	private final static int LOCATION_MIN_DISTANCE_METERS = 0;
 
@@ -61,22 +81,42 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 		mSharedPrefs = activity.getSharedPreferences(RadarActivity.class.getSimpleName(), Context.MODE_PRIVATE);
 		mRadarView = (RadarView) activity.findViewById(R.id.radarView);
 		mRotateViewDistance = (RotateView) activity.findViewById(R.id.rotateView);
-		mRotateViewButtons = (RotateView) activity.findViewById(R.id.rotateView_buttons);
+		mRotateViewWakeLock = (RotateView) activity.findViewById(R.id.rotateView_wake_lock);
+		mRotateViewLocation = (RotateView) activity.findViewById(R.id.rotateView_location);
+		mRotateViewSpeed = (RotateView) activity.findViewById(R.id.rotateView_speed);
+		mRotateViewGPS = (RotateView) activity.findViewById(R.id.rotateView_gps);
 		mTextViewDistance = (TextView) activity.findViewById(R.id.textView_distance);
+		mTextViewSpeed = (TextView) activity.findViewById(R.id.textView_speed);
+		mToggleButtonGps = (ToggleButton) activity.findViewById(R.id.button_gps);
+		mGPSLight = (LEDLightView) activity.findViewById(R.id.light_gps);
+		mToggleButtonGps.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+
+			@Override
+			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				mGPSOn = isChecked;
+				toggleGPS(mGPSOn);
+			}
+		});
 
 		mRotationOffset = determineNaturalOrientationOffset(activity);
 		restoreDestionation();
 		getLastKnownLocation();
 	}
 
-	private int determineNaturalOrientationOffset(Context c){
-		WindowManager wm = (WindowManager)c.getSystemService(Context.WINDOW_SERVICE);
-		int rotation = wm.getDefaultDisplay().getRotation();
-		switch(rotation){
+	@SuppressWarnings("deprecation")
+	private int determineNaturalOrientationOffset(Context c) {
+		WindowManager wm = (WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
+		int rotation = 0;
+		try {
+			rotation = wm.getDefaultDisplay().getRotation();
+		} catch (NoSuchMethodError e) {
+			rotation = wm.getDefaultDisplay().getOrientation();
+		}
+		switch (rotation) {
 		case Surface.ROTATION_0:
 			return 0;
 		case Surface.ROTATION_90:
-			return  90;
+			return 90;
 		case Surface.ROTATION_180:
 			return 180;
 		case Surface.ROTATION_270:
@@ -84,7 +124,7 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 		}
 		return 0;
 	}
-	
+
 	private void getLastKnownLocation() {
 		mLocationProvider = mLocationManager.getBestProvider(new Criteria(), false);
 		Location location = mLocationManager.getLastKnownLocation(mLocationProvider);
@@ -116,18 +156,30 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 			editor.commit();
 		}
 
-	
 	}
-	
 
+	private void toggleGPS(final boolean on) {
+		if (on && mGPSOn) {
+			mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
+			mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
+			mLocationManager.addGpsStatusListener(this);
+			mGPSLight.setChecked(mGPSOn);
+
+		} else {
+			mGPSLight.setChecked(mGPSOn);
+			mLocationManager.removeGpsStatusListener(this);
+			mLocationManager.removeUpdates(this);
+
+		}
+	}
 
 	/**
 	 * stop sensors
 	 */
 	public void onPause() {
 		mSensorManager.unregisterListener(mListener);
-		mLocationManager.removeUpdates(this);
 		mOrientationListener.disable();
+		toggleGPS(false);
 	}
 
 	/**
@@ -136,12 +188,10 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	public void onResume() {
 		mSensorManager.registerListener(mListener, mSensorAcceleration, SensorManager.SENSOR_DELAY_GAME);
 		mSensorManager.registerListener(mListener, mSensorMagnetic, SensorManager.SENSOR_DELAY_GAME);
-		mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
-		mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
 		mOrientationListener.enable();
-
+		toggleGPS(true);
 	}
-	
+
 	public void setDestination(double latitude, double longitude) {
 		if (null == mDestination) {
 			mDestination = new Location("user");
@@ -158,8 +208,6 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 		setDestination(latitude / 1E6, longitude / 1E6);
 	}
 
-	
-	
 	/**
 	 * Device Orientation Callback
 	 */
@@ -167,7 +215,7 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	public void onScreenOrientationChanged(int orientation) {
 
 		int rotation = 0;
-		
+
 		switch (orientation) {
 		case Surface.ROTATION_0:
 			rotation = 0;
@@ -182,20 +230,21 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 			rotation = 90;
 			break;
 		}
-		
-		rotation += (360-mRotationOffset);
-		rotation = rotation%360;
-		Log.i("onScreenOrientationChanged","Rotation: " + rotation);
-		mRotateViewDistance.startRotateAnimation(rotation);		
-		mRotateViewButtons.startRotateAnimation(rotation);
+
+		rotation += (360 - mRotationOffset);
+		rotation = rotation % 360;
+		Log.i("onScreenOrientationChanged", "Rotation: " + rotation);
+		mRotateViewDistance.startRotateAnimation(rotation);
+		mRotateViewWakeLock.startRotateAnimation(rotation);
+		mRotateViewLocation.startRotateAnimation(rotation);
+		mRotateViewGPS.startRotateAnimation(rotation);
+		mRotateViewSpeed.startRotateAnimation(rotation);
 	}
-	
+
 	@Override
 	public void onScreenRotationChanged(int degrees) {
-		mListener.setScreenOrientation(degrees);		
+		mListener.setScreenOrientation(degrees);
 	}
-
-
 
 	/*********************************************
 	 * Compass Callbacks
@@ -206,44 +255,45 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	 */
 	@Override
 	public void onDirectionChanged(double bearing) {
-		float degrees0to360 = (float)(bearing+mRotationOffset);		
+		float degrees0to360 = (float) (bearing + mRotationOffset);
 		mRadarView.setAzimuth(degrees0to360);
 	}
 
 	/**
-	 * 
+	 * update compass view to show magnetic sensor accuracy
 	 */
 	@Override
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {
-		final float frac = 255/4f;
-		final int a=0xff;
-		final int b=0x00;
+		final float frac = 255 / 4f;
+		final int a = 0xff;
+		final int b = 0x00;
 		int r = 0;
 		int g = 0;
 		int index = 0;
 		switch (accuracy) {
 		case SensorManager.SENSOR_STATUS_ACCURACY_HIGH:
-			Log.i(DEBUG_TAG,"SENSOR_STATUS_ACCURACY_HIGH");
+			Log.i(DEBUG_TAG, "SENSOR_STATUS_ACCURACY_HIGH");
 			index = 3;
 			break;
 		case SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM:
-			Log.i(DEBUG_TAG,"SENSOR_STATUS_ACCURACY_MEDIUM");
+			Log.i(DEBUG_TAG, "SENSOR_STATUS_ACCURACY_MEDIUM");
 			index = 2;
 			break;
 		case SensorManager.SENSOR_STATUS_ACCURACY_LOW:
-			Log.i(DEBUG_TAG,"SENSOR_STATUS_ACCURACY_LOW");
+			Log.i(DEBUG_TAG, "SENSOR_STATUS_ACCURACY_LOW");
 			index = 1;
 			break;
 		case SensorManager.SENSOR_STATUS_UNRELIABLE:
-			Log.i(DEBUG_TAG,"SENSOR_STATUS_UNRELIABLE");
+			Log.i(DEBUG_TAG, "SENSOR_STATUS_UNRELIABLE");
 			index = 0;
 			break;
 		}
-		r = (int) ((3-index)*frac);
-		g = (int) (index*frac);
+		r = (int) ((3 - index) * frac);
+		g = (int) (index * frac);
 		mRadarView.setLight(Color.argb(a, r, g, b), 1);
 
 	}
+
 	/**
 	 * roll in degrees
 	 */
@@ -258,12 +308,15 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	public void onPitchChanged(float pitch) {
 
 	}
-	
-	private void calculateDestinationAndBearing(){
+
+	private void calculateDestinationAndBearing() {
 		if (null != mDestination && null != mMapCenter) {
 			final int distance = (int) mMapCenter.distanceTo(mDestination);
 			mRadarView.setBearing(mMapCenter.bearingTo(mDestination));
 			mTextViewDistance.setText(Util.buildDistanceString(distance));
+			if (mLastLocation != null) {
+				mTextViewSpeed.setText(Util.buildSpeedString(mLastLocation.getSpeed()));
+			}
 		}
 	}
 
@@ -271,18 +324,31 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	 * GPS Callbacks
 	 *********************************************/
 
-	
 	@Override
-	public void onLocationChanged(Location location) {
+	public void onLocationChanged(final Location location) {
 		Log.i("RadarActivity", location.toString());
+		mLastLocationMillis = SystemClock.elapsedRealtime();
+		mLastLocation = location;
 		GeomagneticField geoField = new GeomagneticField(Double.valueOf(location.getLatitude()).floatValue(), Double.valueOf(location.getLongitude()).floatValue(), Double.valueOf(location.getAltitude()).floatValue(), System.currentTimeMillis());
-		mRadarView.setDelination(geoField.getDeclination());
+		mRadarView.setDeclination(geoField.getDeclination());
 		mMapCenter = location;
 		calculateDestinationAndBearing();
 	}
 
 	@Override
 	public void onStatusChanged(String provider, int status, Bundle extras) {
+
+	}
+
+	private int getGPSColor(final int numSatellites) {
+		final float frac = 255 / 6f;
+		final int a = 0xff;
+		final int b = 0x00;
+		int r = 0;
+		int g = 0;
+		r = (int) ((3 - numSatellites) * frac);
+		g = (int) (numSatellites * frac);
+		return Color.argb(a, r, g, b);
 	}
 
 	@Override
@@ -291,6 +357,37 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 
 	@Override
 	public void onProviderDisabled(String provider) {
+	}
+
+	@Override
+	public void onGpsStatusChanged(final int event) {
+		boolean isGPSFix = false;
+		switch (event) {
+		case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
+			mSatelliteNumber = 0;
+			GpsStatus stat = mLocationManager.getGpsStatus(null);
+			Iterable<GpsSatellite> sats = stat.getSatellites();
+			for (GpsSatellite sat : sats) {
+				if (sat.usedInFix()) {
+					mSatelliteNumber++;
+				}
+			}
+
+			if (mLastLocation != null)
+				isGPSFix = (SystemClock.elapsedRealtime() - mLastLocationMillis) < 3000;
+
+			if (isGPSFix) {
+				mGPSLight.setLightColor(getGPSColor(mSatelliteNumber));
+			} else {
+				mGPSLight.setLightColor(Color.RED);
+			}
+
+			break;
+		case GpsStatus.GPS_EVENT_FIRST_FIX:
+			isGPSFix = true;
+			mGPSLight.setLightColor(getGPSColor(mSatelliteNumber));
+			break;
+		}
 	}
 
 }

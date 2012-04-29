@@ -2,9 +2,12 @@
 <resources>
     <string name="app_name">Quest Radar</string>
     <string name="pick_location">Wähle Ziel</string>
-    <string name="wake_lock">Display</string>
     <string name="pick_new_location">Neues Ziel</string>
     <string name="cancel">Abbrechen</string>
     <string name="toggle_gps">GPS</string>
     <string name="compass_accuracy">status magnetic sensor</string>
+    <string name="wake_lock_off">Display aus</string>
+    <string name="wake_lock_on">Display an</string>
+    <string name="gps_on">gps an</string>
+    <string name="gps_off">gps aus</string>
 </resources>

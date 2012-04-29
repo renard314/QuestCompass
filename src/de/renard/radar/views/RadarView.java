@@ -16,7 +16,14 @@ import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.view.View;
 
+
+
 public class RadarView extends View {
+	
+	public interface CompassDrawer{
+		Bitmap getStaticBackground(RadarView view, final int width, final int height);
+		void drawCompass(Canvas canvas);
+	}
 
 	// text size for compass Labels (N,E,W,S)
 	private final static float LABEL_TEXT_SIZE = 28f;
@@ -40,6 +47,7 @@ public class RadarView extends View {
 
 	private final Paint mRimPaint; // metallic outer background
 	private final Paint mBackgroundPaint; // metallic inner background
+	private Paint mLinePaint;
 	private Paint mCirclePaint;
 	private Paint mDestinationPaint;
 	private Paint mDrawingCachePaint;
@@ -59,6 +67,16 @@ public class RadarView extends View {
 	private final int sAngleTextHeight;
 	private final int sLabelTextHeight;
 	private boolean mHasDestination = false;
+	private CompassDrawer mCompassDrawer;
+	
+
+	public CompassDrawer getCompassDrawer() {
+		return mCompassDrawer;
+	}
+
+	public void setCompassDrawer(final CompassDrawer compassDrawer) {
+		this.mCompassDrawer = compassDrawer;
+	}
 
 	public RadarView(Context context, AttributeSet attrs) {
 		super(context, attrs);
@@ -69,6 +87,9 @@ public class RadarView extends View {
 		mCirclePaint.setAntiAlias(true);
 		mCirclePaint.setStyle(Paint.Style.STROKE);
 		mCirclePaint.setColor(Color.argb(0x4f, 0x43, 0x46, 0x43));
+
+		mLinePaint = new Paint(mCirclePaint);
+		mLinePaint.setColor(0x88969994);
 		mGlowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		mGlowPaint.setStyle(Paint.Style.FILL);
 
@@ -220,9 +241,6 @@ public class RadarView extends View {
 					mGlowBounds.inset(-inset, -inset);
 					canvas.restore();
 
-					// canvas.drawCircle(0, rimSize / 2, rimSize * 0.25f,
-					// mMarkerPaint);
-					// Draw the text every alternate 30deg
 					final String angle = String.valueOf(i * 15);
 					final float xoffset = mAngleTextPaint.measureText(angle) / 2;
 					canvas.drawText(angle, -xoffset, sAngleTextHeight + rimSize * 1.2f, mAngleTextPaint);
@@ -243,6 +261,11 @@ public class RadarView extends View {
 		changed &= w > 0;
 		changed &= h > 0;
 		if (changed) {
+//			if (mDrawingCacheCompass!=null){
+//				mDrawingCacheCompass.recycle();
+//			}
+//			mDrawingCacheCompass = mCompassDrawer.getStaticBackground(this, w,h);
+			
 			// calculate centered maximum size square rect inside view bounds
 			final float size = Math.min(w, h);
 			final float l = (w - size) / 2;
@@ -255,10 +278,7 @@ public class RadarView extends View {
 			mBackgroundPaint.setShader(new LinearGradient(mBounds.left, 0.0f + mBounds.top, mBounds.right, mBounds.bottom, Color.rgb(0x35, 0x35, 0x35), Color.rgb(0x05, 0x05, 0x10), Shader.TileMode.CLAMP));
 			mRimPaint.setShader(new LinearGradient(mBounds.left, 0.0f + mBounds.top, mBounds.left, mBounds.bottom, Color.rgb(0xa0, 0xa0, 0xa0), Color.rgb(0x45, 0x45, 0x45), Shader.TileMode.CLAMP));
 			mCirclePaint.setStrokeWidth(0.005f * mBounds.width());
-			// mDestinationPaint.setShader(new LinearGradient(0, 0.0f,
-			// mBounds.width() - mInnerBounds.width(), mBounds.width() -
-			// mInnerBounds.width(), Color.rgb(0xa5, 0x35, 0x35),
-			// Color.rgb(0x85, 0x15, 0x15), Shader.TileMode.CLAMP));
+			mLinePaint.setStrokeWidth(0.006f * mBounds.width());
 		}
 	}
 
@@ -271,15 +291,15 @@ public class RadarView extends View {
 		canvas.drawOval(mBounds, mRimPaint); // border
 		canvas.drawOval(mBounds, mCirclePaint); // border edge
 		canvas.drawOval(mInnerBounds, mBackgroundPaint); // inner background
-		canvas.drawCircle(mBounds.centerX(), mBounds.centerY(), r1, mCirclePaint); // first
+		canvas.drawCircle(mBounds.centerX(), mBounds.centerY(), r1, mLinePaint); // first
 																					// inner
 																					// circle
-		canvas.drawCircle(mBounds.centerX(), mBounds.centerY(), r2, mCirclePaint); // second
+		canvas.drawCircle(mBounds.centerX(), mBounds.centerY(), r2, mLinePaint); // second
 																					// inner
 																					// cirlce
-		canvas.drawLine(mInnerBounds.left, mInnerBounds.centerY(), mInnerBounds.right, mInnerBounds.centerY(), mCirclePaint); // vertical
+		canvas.drawLine(mInnerBounds.left, mInnerBounds.centerY(), mInnerBounds.right, mInnerBounds.centerY(), mLinePaint); // vertical
 																																// line
-		canvas.drawLine(mInnerBounds.centerX(), mInnerBounds.top, mInnerBounds.centerX(), mInnerBounds.bottom, mCirclePaint); // horizontal
+		canvas.drawLine(mInnerBounds.centerX(), mInnerBounds.top, mInnerBounds.centerX(), mInnerBounds.bottom, mLinePaint); // horizontal
 																																// line
 		drawMarkers(canvas, radius);
 	}
@@ -354,7 +374,7 @@ public class RadarView extends View {
 		mBearingToDestination = bearing;
 	}
 
-	public void setDelination(final float declination) {
+	public void setDeclination(final float declination) {
 		mDeclination = declination;
 	}
 

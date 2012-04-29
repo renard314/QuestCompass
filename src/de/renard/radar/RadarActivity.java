@@ -70,6 +70,8 @@ public class RadarActivity extends Activity {
 			}
 		}
 	}
+	
+
 
 	@Override
 	protected void onResume() {

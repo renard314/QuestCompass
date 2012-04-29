@@ -5,11 +5,41 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
+    <de.renard.radar.views.RotateView
+        android:id="@+id/rotateView"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true" >
+
+        <TextView
+            android:id="@+id/textView_distance"
+            style="@style/DistanceText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </de.renard.radar.views.RotateView>
+
+    <de.renard.radar.views.RotateView
+        android:id="@+id/rotateView_speed"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true" >
+
+        <TextView
+            android:id="@+id/textView_speed"
+            style="@style/DistanceText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </de.renard.radar.views.RotateView>
+
     <de.renard.radar.views.RadarView
         android:id="@+id/radarView"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:layout_alignParentTop="true" >
+        android:layout_alignParentTop="true"
+        android:layout_below="@+id/rotateView"
+        android:layout_marginTop="85dp" >
     </de.renard.radar.views.RadarView>
 
     <LinearLayout
@@ -22,42 +52,52 @@
         android:orientation="horizontal" >
 
         <de.renard.radar.views.RotateView
-            android:id="@+id/rotateView"
+            android:id="@+id/rotateView_gps"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="fill_parent">
+
+            <ToggleButton
+                android:id="@+id/button_gps"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:textOff="@string/gps_off"
+                android:textOn="@string/gps_on" />
+        </de.renard.radar.views.RotateView>
+
+        <de.renard.views.ledlight.LEDLightView
+            android:id="@+id/light_gps"
+            android:layout_width="48dp"
+            android:layout_height="match_parent"
+            app:AnimationDuration="500"
+            app:ColorizeGlass="false"
+            app:LightColor="#ff0000" />
+
+        <de.renard.radar.views.RotateView
+            android:id="@+id/rotateView_wake_lock"
             android:layout_width="0dp"
             android:layout_height="fill_parent"
             android:layout_weight="1" >
 
-            <TextView
-                android:id="@+id/textView_distance"
-                style="@style/DistanceText"
-                android:layout_width="0dp"
+            <ToggleButton
+                android:id="@+id/button_wake_lock"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1" />
+                android:textOff="@string/wake_lock_off"
+                android:textOn="@string/wake_lock_on" />
         </de.renard.radar.views.RotateView>
 
         <de.renard.radar.views.RotateView
-            android:id="@+id/rotateView_buttons"
+            android:id="@+id/rotateView_location"
             android:layout_width="0dp"
             android:layout_height="fill_parent"
             android:layout_weight="1" >
 
-            <LinearLayout
-                android:layout_width="fill_parent"
-                android:layout_height="fill_parent"
-                android:orientation="vertical" >
-
-                <Button
-                    android:id="@+id/button_pick_location"
-                    android:layout_width="fill_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/pick_location" />
-
-                <ToggleButton
-                    android:id="@+id/button_wake_lock"
-                    android:layout_width="fill_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/wake_lock" />
-            </LinearLayout>
+            <Button
+                android:id="@+id/button_pick_location"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pick_location" />
         </de.renard.radar.views.RotateView>
     </LinearLayout>
 

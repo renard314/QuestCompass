@@ -25,7 +25,7 @@ public class RotateView extends FrameLayout {
 
 	private float mRotation;
 	private final Matrix mRotationMatrix = new Matrix();
-	private final Matrix mInvertRotationMatrix= new Matrix();
+	private final Matrix mInvertRotationMatrix = new Matrix();
 	private ObjectAnimator mAnimator;
 	private float mTargetDegree;
 	private RectF mChildBounds = new RectF();
@@ -36,6 +36,7 @@ public class RotateView extends FrameLayout {
 
 	public RotateView(Context context, AttributeSet attrs) {
 		super(context, attrs);
+		//setWillNotDraw(false);
 	}
 
 	public void startRotateAnimation(final float degrees) {
@@ -95,17 +96,28 @@ public class RotateView extends FrameLayout {
 
 	@Override
 	public boolean onInterceptTouchEvent(MotionEvent ev) {
-		mMappedTouchPoint[0] = ev.getX(); 
-		mMappedTouchPoint[1] = ev.getY(); 
+		mMappedTouchPoint[0] = ev.getX();
+		mMappedTouchPoint[1] = ev.getY();
 		mInvertRotationMatrix.mapPoints(mMappedTouchPoint);
 		ev.setLocation(mMappedTouchPoint[0], mMappedTouchPoint[1]);
 		return super.onInterceptTouchEvent(ev);
 	}
 
+//	@Override
+//	protected void onDraw(Canvas canvas) {
+//		Paint p = new Paint(){{
+//			setStyle(Paint.Style.FILL);
+//			setColor(Color.RED);
+//		}
+//		};
+//		canvas.drawRect(mChildBounds, p);
+//	}
+
 	@Override
 	protected boolean drawChild(final Canvas canvas, final View child, final long drawingTime) {
 		canvas.save();
-		//canvas.rotate(mRotation, mChildBounds.centerX(), mChildBounds.centerY());
+		// canvas.rotate(mRotation, mChildBounds.centerX(),
+		// mChildBounds.centerY());
 		canvas.concat(mRotationMatrix);
 		final boolean result = super.drawChild(canvas, child, drawingTime);
 		canvas.restore();

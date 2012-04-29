@@ -1,5 +1,6 @@
 package de.renard.radar;
 
+
 public class CompassFilter {
 
 	private static final float SmoothFactorCompass = 0.5f;
@@ -24,6 +25,8 @@ public class CompassFilter {
 				}
 			}
 		}
+		
+		
 		return sOldCompass;
 	}
 
