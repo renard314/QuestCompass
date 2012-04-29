@@ -19,8 +19,8 @@ public class Util {
 
 	public static String buildSpeedString(final float speedMPerSecond) {
 		float speed = speedMPerSecond * 3.6f;
-		String format = "%.1f%s";
-		String unit = "Km/s";
+		String format = "%.1f\n%s";
+		String unit = "km/s";
 		return String.format(format, speed, unit);
 	}
 
