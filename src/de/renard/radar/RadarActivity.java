@@ -1,19 +1,25 @@
 package de.renard.radar;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import android.app.Activity;
 import android.content.Intent;
+import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.Toast;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ToggleButton;
 import de.renard.radar.map.LocationPickActivity;
 
 public class RadarActivity extends Activity {
 
+	public static final String CURRENT_LOCATION = "current_location";
 	private final static String DEBUG_TAG = RadarActivity.class.getSimpleName();
 	private final static int REQUEST_CODE_LOCATION = 0;
 
@@ -31,11 +37,16 @@ public class RadarActivity extends Activity {
 
 			@Override
 			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+				Toast message = null;
 				if (isChecked) {
+					message = Toast.makeText(RadarActivity.this, R.string.display_stays_on, Toast.LENGTH_LONG);
 					getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 				} else {
+					message = Toast.makeText(RadarActivity.this, R.string.display_will_sleep, Toast.LENGTH_LONG);
 					getWindow().clearFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 				}
+				message.setGravity(Gravity.BOTTOM, 0, 0);
+				message.show();
 
 			}
 		});
@@ -45,6 +56,8 @@ public class RadarActivity extends Activity {
 			@Override
 			public void onClick(View v) {
 				Intent i = new Intent(RadarActivity.this, LocationPickActivity.class);
+				Location currentLocation = mLocationDataManager.getCurrentLocation();
+				i.putExtra(CURRENT_LOCATION, currentLocation);
 				startActivityForResult(i, REQUEST_CODE_LOCATION);
 			}
 		});
@@ -64,9 +77,8 @@ public class RadarActivity extends Activity {
 		if (resultCode == RESULT_OK) {
 			switch (requestCode) {
 			case REQUEST_CODE_LOCATION:
-				final int latE6 = data.getIntExtra(LocationPickActivity.EXTRA_LATITUDE, -1);
-				final int longE6 = data.getIntExtra(LocationPickActivity.EXTRA_LONGITUDE, -1);
-				mLocationDataManager.setDestination(latE6, longE6);
+				LatLng location = data.getParcelableExtra(LocationPickActivity.EXTRA_LATLNG);
+				mLocationDataManager.setDestination(location);
 			}
 		}
 	}

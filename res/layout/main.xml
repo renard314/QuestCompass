@@ -65,10 +65,10 @@
                 android:textOn="@string/gps_on" />
         </de.renard.radar.views.RotateView>
 
-        <de.renard.views.ledlight.LEDLightView
+        <de.renard.views.ledlight.LedLightView
             android:id="@+id/light_gps"
             android:layout_width="48dp"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             app:AnimationDuration="500"
             app:ColorizeGlass="false"
             app:LightColor="#ff0000" />

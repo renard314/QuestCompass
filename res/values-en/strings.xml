@@ -5,9 +5,13 @@
     <string name="pick_new_location">New Target</string>
     <string name="cancel">Cancel</string>
     <string name="toggle_gps">GPS</string>
-    <string name="compass_accuracy">Status Magnetsensor</string>
+    <string name="compass_accuracy">status magnetic sensor</string>
     <string name="wake_lock_off">Display off</string>
     <string name="wake_lock_on">Display on</string>
     <string name="gps_on">gps on</string>
     <string name="gps_off">gps off</string>
+    <string name="display_stays_on">Display will stay on</string>
+    <string name="display_will_sleep">Display can go to sleep</string>
+    <string name="gps_on_explanation">GPS is on. Distance will be updated</string>
+    <string name="gps_off_explanation">GPS is off. Distance will not be updated</string>
 </resources>

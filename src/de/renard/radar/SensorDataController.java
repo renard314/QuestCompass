@@ -1,5 +1,7 @@
 package de.renard.radar;
 
+import com.google.android.gms.maps.model.LatLng;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
@@ -16,25 +18,28 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 import de.renard.radar.CompassSensorListener.DirectionListener;
 import de.renard.radar.ScreenOrienationEventListener.OnScreenOrientationChangeListener;
-import de.renard.radar.map.LocationPickActivity;
 import de.renard.radar.views.RadarView;
 import de.renard.radar.views.RotateView;
-import de.renard.views.ledlight.LEDLightView;
+import de.renard.views.ledlight.LedLightView;
 
 /**
  * receives data from device sensors /gps and updates all views
  */
-public class SensorDataController implements OnScreenOrientationChangeListener, DirectionListener, LocationListener, GpsStatus.Listener {
-	private final static String DEBUG_TAG = SensorDataController.class.getSimpleName();
+public class SensorDataController implements OnScreenOrientationChangeListener,
+		DirectionListener, LocationListener, GpsStatus.Listener {
+	private final static String DEBUG_TAG = SensorDataController.class
+			.getSimpleName();
 
 	private boolean mGPSOn = false;
 
@@ -59,7 +64,7 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	private TextView mTextViewDistance;
 	private TextView mTextViewSpeed;
 	private ToggleButton mToggleButtonGps;
-	private LEDLightView mGPSLight;
+	private LedLightView mGPSLight;
 	private final int mRotationOffset;
 
 	private long mLastLocationMillis;
@@ -71,32 +76,54 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	private final static int LOCATION_MIN_TIME_MS = 15000;
 	private final static int LOCATION_MIN_DISTANCE_METERS = 0;
 
+	private static final String EXTRA_LATITUDE = "lat";
+
+	private static final String EXTRA_LONGITUDE = "long";
+
 	public SensorDataController(RadarActivity activity) {
-		mSensorManager = (SensorManager) activity.getSystemService(Context.SENSOR_SERVICE);
-		mLocationManager = (LocationManager) activity.getSystemService(Context.LOCATION_SERVICE);
-		mSensorAcceleration = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-		mSensorMagnetic = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+		mSensorManager = (SensorManager) activity
+				.getSystemService(Context.SENSOR_SERVICE);
+		mLocationManager = (LocationManager) activity
+				.getSystemService(Context.LOCATION_SERVICE);
+		mSensorAcceleration = mSensorManager
+				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		mSensorMagnetic = mSensorManager
+				.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		mOrientationListener = new ScreenOrienationEventListener(activity, this);
 		mListener = new CompassSensorListener(this);
-		mSharedPrefs = activity.getSharedPreferences(RadarActivity.class.getSimpleName(), Context.MODE_PRIVATE);
+		mSharedPrefs = activity.getSharedPreferences(
+				RadarActivity.class.getSimpleName(), Context.MODE_PRIVATE);
 		mRadarView = (RadarView) activity.findViewById(R.id.radarView);
-		mRotateViewDistance = (RotateView) activity.findViewById(R.id.rotateView);
-		mRotateViewWakeLock = (RotateView) activity.findViewById(R.id.rotateView_wake_lock);
-		mRotateViewLocation = (RotateView) activity.findViewById(R.id.rotateView_location);
-		mRotateViewSpeed = (RotateView) activity.findViewById(R.id.rotateView_speed);
-		mRotateViewGPS = (RotateView) activity.findViewById(R.id.rotateView_gps);
-		mTextViewDistance = (TextView) activity.findViewById(R.id.textView_distance);
+		mRotateViewDistance = (RotateView) activity
+				.findViewById(R.id.rotateView);
+		mRotateViewWakeLock = (RotateView) activity
+				.findViewById(R.id.rotateView_wake_lock);
+		mRotateViewLocation = (RotateView) activity
+				.findViewById(R.id.rotateView_location);
+		mRotateViewSpeed = (RotateView) activity
+				.findViewById(R.id.rotateView_speed);
+		mRotateViewGPS = (RotateView) activity
+				.findViewById(R.id.rotateView_gps);
+		mTextViewDistance = (TextView) activity
+				.findViewById(R.id.textView_distance);
 		mTextViewSpeed = (TextView) activity.findViewById(R.id.textView_speed);
-		mToggleButtonGps = (ToggleButton) activity.findViewById(R.id.button_gps);
-		mGPSLight = (LEDLightView) activity.findViewById(R.id.light_gps);
-		mToggleButtonGps.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+		mToggleButtonGps = (ToggleButton) activity
+				.findViewById(R.id.button_gps);
+		mGPSLight = (LedLightView) activity.findViewById(R.id.light_gps);
+		mToggleButtonGps
+				.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
-			@Override
-			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-				mGPSOn = isChecked;
-				toggleGPS(mGPSOn);
-			}
-		});
+					@Override
+					public void onCheckedChanged(CompoundButton buttonView,
+							boolean isChecked) {
+						mGPSOn = isChecked;
+						toggleGPS(mGPSOn);
+						int messageId = mGPSOn==true?R.string.gps_on_explanation:R.string.gps_off_explanation;
+						Toast message = Toast.makeText(mToggleButtonGps.getContext(), messageId, Toast.LENGTH_LONG);
+						message.setGravity(Gravity.BOTTOM, 0, 0);
+						message.show();
+					}
+				});
 
 		mRotationOffset = determineNaturalOrientationOffset(activity);
 		restoreDestionation();
@@ -105,7 +132,8 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 
 	@SuppressWarnings("deprecation")
 	private int determineNaturalOrientationOffset(Context c) {
-		WindowManager wm = (WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
+		WindowManager wm = (WindowManager) c
+				.getSystemService(Context.WINDOW_SERVICE);
 		int rotation = 0;
 		try {
 			rotation = wm.getDefaultDisplay().getRotation();
@@ -126,8 +154,10 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	}
 
 	private void getLastKnownLocation() {
-		mLocationProvider = mLocationManager.getBestProvider(new Criteria(), false);
-		Location location = mLocationManager.getLastKnownLocation(mLocationProvider);
+		mLocationProvider = mLocationManager.getBestProvider(new Criteria(),
+				false);
+		Location location = mLocationManager
+				.getLastKnownLocation(mLocationProvider);
 		mMapCenter = location;
 		calculateDestinationAndBearing();
 	}
@@ -136,11 +166,15 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	 * load destination from preferences
 	 */
 	public void restoreDestionation() {
-		if (mSharedPrefs.contains(LocationPickActivity.EXTRA_LATITUDE)) {
-			final int latitudeE6 = mSharedPrefs.getInt(LocationPickActivity.EXTRA_LATITUDE, 0);
-			final int longitudeE6 = mSharedPrefs.getInt(LocationPickActivity.EXTRA_LONGITUDE, 0);
+		if (mSharedPrefs.contains(EXTRA_LATITUDE)) {
+			final int latitudeE6 = mSharedPrefs.getInt(EXTRA_LATITUDE, 0);
+			final int longitudeE6 = mSharedPrefs.getInt(EXTRA_LONGITUDE, 0);
 			setDestination(latitudeE6, longitudeE6);
 		}
+	}
+	
+	public Location getCurrentLocation(){
+		return mDestination;
 	}
 
 	/**
@@ -151,8 +185,8 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 			final Editor editor = mSharedPrefs.edit();
 			final int latitudeE6 = (int) (mDestination.getLatitude() * 1E6);
 			final int longitudeE6 = (int) (mDestination.getLongitude() * 1E6);
-			editor.putInt(LocationPickActivity.EXTRA_LATITUDE, latitudeE6);
-			editor.putInt(LocationPickActivity.EXTRA_LONGITUDE, longitudeE6);
+			editor.putInt(EXTRA_LATITUDE, latitudeE6);
+			editor.putInt(EXTRA_LONGITUDE, longitudeE6);
 			editor.commit();
 		}
 
@@ -160,8 +194,12 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 
 	private void toggleGPS(final boolean on) {
 		if (on && mGPSOn) {
-			mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
-			mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, LOCATION_MIN_TIME_MS, LOCATION_MIN_DISTANCE_METERS, this);
+			mLocationManager.requestLocationUpdates(
+					LocationManager.GPS_PROVIDER, LOCATION_MIN_TIME_MS,
+					LOCATION_MIN_DISTANCE_METERS, this);
+			mLocationManager.requestLocationUpdates(
+					LocationManager.NETWORK_PROVIDER, LOCATION_MIN_TIME_MS,
+					LOCATION_MIN_DISTANCE_METERS, this);
 			mLocationManager.addGpsStatusListener(this);
 			mGPSLight.setChecked(mGPSOn);
 
@@ -186,13 +224,15 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 	 * start sensors
 	 */
 	public void onResume() {
-		mSensorManager.registerListener(mListener, mSensorAcceleration, SensorManager.SENSOR_DELAY_GAME);
-		mSensorManager.registerListener(mListener, mSensorMagnetic, SensorManager.SENSOR_DELAY_GAME);
+		mSensorManager.registerListener(mListener, mSensorAcceleration,
+				SensorManager.SENSOR_DELAY_GAME);
+		mSensorManager.registerListener(mListener, mSensorMagnetic,
+				SensorManager.SENSOR_DELAY_GAME);
 		mOrientationListener.enable();
 		toggleGPS(true);
 	}
 
-	public void setDestination(double latitude, double longitude) {
+	private void setDestination(double latitude, double longitude) {
 		if (null == mDestination) {
 			mDestination = new Location("user");
 		}
@@ -200,11 +240,15 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 		mDestination.setLongitude(longitude);
 		calculateDestinationAndBearing();
 	}
+	public void setDestination(LatLng location) {
+		setDestination(location.latitude, location.longitude);
+	}
+
 
 	/**
 	 * updates the compass to show bearing to destination
 	 */
-	public void setDestination(final int latitude, final int longitude) {
+	private void setDestination(final int latitude, final int longitude) {
 		setDestination(latitude / 1E6, longitude / 1E6);
 	}
 
@@ -315,7 +359,8 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 			mRadarView.setBearing(mMapCenter.bearingTo(mDestination));
 			mTextViewDistance.setText(Util.buildDistanceString(distance));
 			if (mLastLocation != null) {
-				mTextViewSpeed.setText(Util.buildSpeedString(mLastLocation.getSpeed()));
+				mTextViewSpeed.setText(Util.buildSpeedString(mLastLocation
+						.getSpeed()));
 			}
 		}
 	}
@@ -329,7 +374,11 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 		Log.i("RadarActivity", location.toString());
 		mLastLocationMillis = SystemClock.elapsedRealtime();
 		mLastLocation = location;
-		GeomagneticField geoField = new GeomagneticField(Double.valueOf(location.getLatitude()).floatValue(), Double.valueOf(location.getLongitude()).floatValue(), Double.valueOf(location.getAltitude()).floatValue(), System.currentTimeMillis());
+		GeomagneticField geoField = new GeomagneticField(Double.valueOf(
+				location.getLatitude()).floatValue(), Double.valueOf(
+				location.getLongitude()).floatValue(), Double.valueOf(
+				location.getAltitude()).floatValue(),
+				System.currentTimeMillis());
 		mRadarView.setDeclination(geoField.getDeclination());
 		mMapCenter = location;
 		calculateDestinationAndBearing();
@@ -389,5 +438,6 @@ public class SensorDataController implements OnScreenOrientationChangeListener, 
 			break;
 		}
 	}
+
 
 }

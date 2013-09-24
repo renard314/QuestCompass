@@ -1,63 +1,91 @@
 package de.renard.radar.map;
 
-import java.util.List;
-
 import android.content.Intent;
+import android.location.Location;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
 import android.view.View;
 import android.widget.Button;
 
-import com.google.android.maps.GeoPoint;
-import com.google.android.maps.MapActivity;
-import com.google.android.maps.MapView;
-import com.google.android.maps.Overlay;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMap.OnCameraChangeListener;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.LatLng;
 
 import de.renard.radar.R;
+import de.renard.radar.RadarActivity;
 
-public class LocationPickActivity extends MapActivity {
-	public static final String EXTRA_LATITUDE = "lat";
-	public static final String EXTRA_LONGITUDE = "long";
+public class LocationPickActivity extends FragmentActivity {
+	public static final String EXTRA_LATLNG = "latlong";
 
-	private MapView mMapView;
+	private GoogleMap mMap;
+
+	private LocationOverlay overlay;
 
 	@Override
 	protected void onCreate(Bundle arg0) {
 		super.onCreate(arg0);
 		setContentView(R.layout.location_pick_activity);
-		mMapView = (MapView) findViewById(R.id.map);
-		mMapView.setBuiltInZoomControls(true);
-
-		List<Overlay> overlays = mMapView.getOverlays();
-		overlays.add(new LocationOverlay());
+		setUpMapIfNeeded();
+		overlay = (LocationOverlay) findViewById(R.id.location_overlay);
 
 		Button okButton = (Button) findViewById(R.id.button_pick_location);
 		okButton.setOnClickListener(new View.OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
-				final GeoPoint mapCenter = mMapView.getMapCenter();
+				CameraPosition cameraPosition = mMap.getCameraPosition();
+
 				Intent i = new Intent();
-				i.putExtra(EXTRA_LATITUDE, mapCenter.getLatitudeE6());
-				i.putExtra(EXTRA_LONGITUDE, mapCenter.getLongitudeE6());
+				i.putExtra(EXTRA_LATLNG, cameraPosition.target);
 				setResult(RESULT_OK, i);
 				finish();
 			}
 		});
 
-		Button cancelButton = (Button) findViewById(R.id.button_cancel);
-		cancelButton.setOnClickListener(new View.OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-				setResult(RESULT_CANCELED);
-				finish();
-			}
-		});
 	}
 
 	@Override
-	protected boolean isRouteDisplayed() {
-		return false;
+	protected void onResume() {
+		super.onResume();
+		setUpMapIfNeeded();
+	}
+
+	private void setUpMap() {
+		mMap.setOnCameraChangeListener(new OnCameraChangeListener() {
+
+			@Override
+			public void onCameraChange(CameraPosition position) {
+				overlay.updateCameraPostion(position);
+			}
+		});
+
+		mMap.setMyLocationEnabled(true);
+		if (getIntent() != null) {
+			Location location = getIntent().getParcelableExtra(
+					RadarActivity.CURRENT_LOCATION);
+			LatLng latLng = new LatLng(location.getLatitude(),
+					location.getLongitude());
+			mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14.0f));
+
+		}
+
+	}
+
+	private void setUpMapIfNeeded() {
+		// Do a null check to confirm that we have not already instantiated the
+		// map.
+		if (mMap == null) {
+			// Try to obtain the map from the SupportMapFragment.
+			mMap = ((SupportMapFragment) getSupportFragmentManager()
+					.findFragmentById(R.id.map)).getMap();
+			// Check if we were successful in obtaining the map.
+			if (mMap != null) {
+				setUpMap();
+			}
+		}
 	}
 
 }
