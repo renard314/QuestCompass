@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="de.renard.radar"
-    android:versionCode="2"
-    android:versionName="2.0" >
+    android:versionCode="3"
+    android:versionName="3.0" >
 
     <uses-sdk
         android:minSdkVersion="8"
@@ -31,7 +31,7 @@
     	<uses-library android:name="com.google.android.maps" />
         <meta-data
             android:name="com.google.android.maps.v2.API_KEY"
-            android:value="AIzaSyD85-JjPfJhDBSTrIETh6Uyu14ToOHQp7Y" />
+            android:value="" />
         
         <activity
             android:name=".map.LocationPickActivity"

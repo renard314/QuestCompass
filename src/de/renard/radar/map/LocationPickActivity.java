@@ -64,11 +64,11 @@ public class LocationPickActivity extends FragmentActivity {
 
 		mMap.setMyLocationEnabled(true);
 		if (getIntent() != null) {
-			Location location = getIntent().getParcelableExtra(
-					RadarActivity.CURRENT_LOCATION);
-			LatLng latLng = new LatLng(location.getLatitude(),
-					location.getLongitude());
-			mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14.0f));
+			Location location = getIntent().getParcelableExtra(RadarActivity.CURRENT_LOCATION);
+			if (location!=null){
+				LatLng latLng = new LatLng(location.getLatitude(),location.getLongitude());
+				mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14.0f));
+			}
 
 		}
 
