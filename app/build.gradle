@@ -1,13 +1,25 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:0.5.+'
+    }
+}
 apply plugin: 'android'
 
 dependencies {
+    repositories {
+        mavenCentral()
+    }
     compile fileTree(dir: 'libs', include: '*.jar')
-    compile project(':IntPay-Android:ZenPay-Android:extern:LEDView')
-    compile project(':android-sdk-mac_x86:extras:google:google_play_services:libproject:google-play-services_lib')
+    compile 'com.android.support:support-v4:13.0.0'
+    compile 'com.google.android.gms:play-services:3.1.36'
+    compile project(":extern:LedView")
 }
 
 android {
-    compileSdkVersion 18
+    compileSdkVersion 17
     buildToolsVersion "18.1.0"
 
     sourceSets {

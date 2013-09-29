@@ -1,0 +1,3 @@
+[submodule "extern/LedView"]
+	path = extern/LedView
+	url = git@github.com:renard314/LEDView.git

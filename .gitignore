@@ -1,6 +1,10 @@
 .settings/
 .DS_Store
-obj/*
-bin/*
-gen/*
-libs/*
+.idea/*
+.gradle/*
+gradle/*
+app/obj/*
+app/bin/*
+app/gen/*
+app/libs/*
+app/build/*
