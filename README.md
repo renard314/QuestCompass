@@ -4,8 +4,8 @@ QUEST COMPASS
 
 ## Compass App which shows the distance and bearing to any location. 
 
-![Screenshot 1](https://github.com/renard314/QuestCompass/raw/master/screenshot1.png)
-
+![Screenshot 1](https://raw.github.com/renard314/QuestCompass/master/screenshot1.png)
+                
 
 ## how to setup Android Studio
 * git clone --recursive git@github.com:renard314/QuestCompass.git
