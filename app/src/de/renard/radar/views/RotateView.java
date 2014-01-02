@@ -135,10 +135,10 @@ public class RotateView extends FrameLayout {
 			final float t = (h - size) / 2;
 			mChildBounds.set(l, t, l + size, t + size);
 			final View child = getChildAt(0);
-			int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec((int) size, MeasureSpec.AT_MOST);
-			int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec((int) size, MeasureSpec.AT_MOST);
-			child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
 
+            int childHeightMeasureSpec = MeasureSpec.makeMeasureSpec((int) size, MeasureSpec.AT_MOST);
+			int childWidthMeasureSpec = MeasureSpec.makeMeasureSpec((int) size, MeasureSpec.EXACTLY);
+			child.measure(childWidthMeasureSpec, childHeightMeasureSpec);
 			final float childHeight = child.getMeasuredHeight();
 			final float childWidth = child.getMeasuredWidth();
 			final float childLeft = mChildBounds.centerX() - childWidth / 2;

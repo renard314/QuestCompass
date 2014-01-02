@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <resources>
-    <string name="app_name">Quest Radar</string>
-    <string name="pick_location">Pick Target</string>
-    <string name="pick_new_location">New Target</string>
+    <string name="app_name">GPS-Compass</string>
+    <string name="pick_location">Destinations</string>
     <string name="cancel">Cancel</string>
     <string name="toggle_gps">GPS</string>
     <string name="compass_accuracy">status magnetic sensor</string>
@@ -14,4 +13,8 @@
     <string name="display_will_sleep">Display can go to sleep</string>
     <string name="gps_on_explanation">GPS is on. Distance will be updated</string>
     <string name="gps_off_explanation">GPS is off. Distance will not be updated</string>
+    <string name="choose_or_create_location">Choose or create a location</string>
+    <string name="create_location">Add destination</string>
+    <string name="enter_location_description">Describe the destination</string>
+    <string name="could_not_get_adress">Error resolving address.</string>
 </resources>

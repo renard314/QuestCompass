@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
+    android:paddingRight="16dp"
+    android:paddingLeft="16dp"
+    android:descendantFocusability="blocksDescendants">
+
+    <TextView
+        android:id="@+id/description"
+        android:maxLines="2"
+        android:layout_toLeftOf="@+id/delete_button"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:text="My Home"
+        android:textSize="18dp"
+        android:layout_width="match_parent" />
+
+    <TextView
+        android:gravity="center_vertical"
+        android:id="@+id/latlong"
+        android:layout_toLeftOf="@+id/delete_button"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/description"
+        android:text="My Home"
+        android:textColor="@color/holo_blue_dark"
+        android:textSize="14dp"
+        android:layout_width="match_parent" />
+
+    <ImageButton
+        android:layout_marginLeft="16dp"
+        android:background="@drawable/btn_no_background"
+        android:id="@+id/delete_button"
+        android:layout_alignTop="@+id/description"
+        android:layout_alignBottom="@+id/latlong"
+        android:layout_alignParentRight="true"
+        android:src="@drawable/ic_action_content_discard"
+        android:layout_height="48dp"
+        android:layout_width="48dp" />
+</RelativeLayout>

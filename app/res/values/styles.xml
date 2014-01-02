@@ -6,5 +6,9 @@
         <item name="android:gravity">center</item>
         <item name="android:textStyle">bold</item>
     </style>
+
+    <style name="Theme.AppCompat.NoActionBar" parent="@style/Theme.AppCompat">
+        <item name="android:windowNoTitle">true</item>
+    </style>
     
 </resources>

@@ -1,0 +1,33 @@
+// File: build.gradle
+apply plugin: 'java'
+apply plugin: 'maven'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    compile('de.greenrobot:greendao-generator:1.3.0')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src'
+            srcDir 'gen'
+        }
+    }
+}
+
+task(runSimple, dependsOn: 'classes', type: JavaExec) {
+    main = 'de.renard.radar.LocationListDaoGenerator'
+    classpath = sourceSets.main.runtimeClasspath
+}
+
+jar.dependsOn 'runSimple'
+
+
+artifacts {
+    archives jar
+}

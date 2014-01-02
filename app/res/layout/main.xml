@@ -56,7 +56,6 @@
             android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="fill_parent">
-
             <ToggleButton
                 android:id="@+id/button_gps"
                 android:layout_width="fill_parent"

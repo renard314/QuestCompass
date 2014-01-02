@@ -3,9 +3,13 @@ package de.renard.radar;
 import com.google.android.gms.maps.model.LatLng;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
-import android.location.Location;
+import android.content.SharedPreferences;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -15,24 +19,39 @@ import android.widget.CompoundButton;
 import android.widget.Toast;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ToggleButton;
-import de.renard.radar.map.LocationPickActivity;
 
-public class RadarActivity extends Activity {
+import java.util.Date;
+import java.util.List;
+
+import de.renard.radar.map.LocationPickActivity;
+import gen.radar.DaoMaster;
+import gen.radar.DaoSession;
+import gen.radar.Location;
+import gen.radar.LocationDao;
+
+import static gen.radar.DaoMaster.*;
+
+public class RadarActivity extends FragmentActivity {
 
 	public static final String CURRENT_LOCATION = "current_location";
 	private final static String DEBUG_TAG = RadarActivity.class.getSimpleName();
 	private final static int REQUEST_CODE_LOCATION = 0;
 
 	private SensorDataController mLocationDataManager;
+    private LocationDao mLocationDao;
+    private LatLng mLastlocation;
+    private SharedPreferences mSharedPrefs;
 
-	/** Called when the activity is first created. */
+    /** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.main);
 		mLocationDataManager = new SensorDataController(this);
+        mSharedPrefs = getSharedPreferences(RadarActivity.class.getSimpleName(), Context.MODE_PRIVATE);
 
-		ToggleButton toggle = (ToggleButton) findViewById(R.id.button_wake_lock);
+
+        ToggleButton toggle = (ToggleButton) findViewById(R.id.button_wake_lock);
 		toggle.setOnCheckedChangeListener(new OnCheckedChangeListener() {
 
 			@Override
@@ -55,37 +74,108 @@ public class RadarActivity extends Activity {
 
 			@Override
 			public void onClick(View v) {
-				Intent i = new Intent(RadarActivity.this, LocationPickActivity.class);
-				Location currentLocation = mLocationDataManager.getCurrentLocation();
-				i.putExtra(CURRENT_LOCATION, currentLocation);
-				startActivityForResult(i, REQUEST_CODE_LOCATION);
+                if(mLocationDao.count()==0){
+                    startMapActivity();
+                } else {
+                    final FragmentManager supportFragmentManager = getSupportFragmentManager();
+                    LocationListDialog.newInstance().show(supportFragmentManager,LocationListDialog.TAG);
+                }
 			}
 		});
-		
-		Log.i(DEBUG_TAG, "onCreate()");
-	}
-	
-
-	@Override
-	public void onBackPressed() {
-		super.onBackPressed();
-		mLocationDataManager.saveDestination();
+        initDataAccess();
+        restoreLastActiveLocation();
+        Log.i(DEBUG_TAG, "onCreate()");
 	}
 
+    private void restoreLastActiveLocation() {
+        final List<Location> active = mLocationDao.queryBuilder().where(LocationDao.Properties.Active.eq("true")).limit(1).list();
+        if (active!=null && active.size()==1){
+            final Location location = active.get(0);
+            LatLng latLng = new LatLng(location.getLat(),location.getLng());
+            mLocationDataManager.setDestination(latLng);
+        }
+    }
+
+    private void initDataAccess() {
+        DevOpenHelper helper = new DevOpenHelper(this, "location-db", null);
+        SQLiteDatabase db = helper.getWritableDatabase();
+        DaoMaster daoMaster = new DaoMaster(db);
+        DaoSession daoSession = daoMaster.newSession();
+        mLocationDao = daoSession.getLocationDao();
+
+    }
+
+    public void startMapActivity() {
+        Intent i = new Intent(this, LocationPickActivity.class);
+        android.location.Location currentLocation = mLocationDataManager.getCurrentLocation();
+        i.putExtra(CURRENT_LOCATION, currentLocation);
+        startActivityForResult(i, REQUEST_CODE_LOCATION);
+    }
+
+    /**
+     * location is set by the map activity
+     * @param requestCode
+     * @param resultCode
+     * @param data
+     */
 	@Override
 	protected void onActivityResult(final int requestCode, final int resultCode, final Intent data) {
 		if (resultCode == RESULT_OK) {
 			switch (requestCode) {
 			case REQUEST_CODE_LOCATION:
-				LatLng location = data.getParcelableExtra(LocationPickActivity.EXTRA_LATLNG);
-				mLocationDataManager.setDestination(location);
+				mLastlocation = data.getParcelableExtra(LocationPickActivity.EXTRA_LATLNG);
+				mLocationDataManager.setDestination(mLastlocation);
 			}
 		}
 	}
-	
+
+    @Override
+    protected void onPostResume() {
+        super.onPostResume();
+        if (mLastlocation!=null){
+            askForLocationDescription(mLastlocation);
+            mLastlocation = null;
+        }
+    }
+
+    private void askForLocationDescription(LatLng location) {
+        final FragmentManager supportFragmentManager = getSupportFragmentManager();
+        LocationDescriptionDialog.newInstance(location).show(supportFragmentManager,LocationDescriptionDialog.TAG);
+    }
+
+    /**
+     * called by @LocationDescriptionDialog after user has entered the description for a new location
+     * @param location
+     * @param description
+     */
+    void saveLocation(LatLng location, String description) {
+        //TODO do it asynchronously
+        Location loc = new Location();
+        loc.setCreated(new Date());
+        loc.setDescription(description);
+        loc.setLat(location.latitude);
+        loc.setLng(location.longitude);
+        loc.setActive(true);
+        final List<Location> list = mLocationDao.queryBuilder().where(LocationDao.Properties.Active.eq(true)).limit(1).list();
+        if (list.size()==1){
+            list.get(0).setActive(false);
+            mLocationDao.update(list.get(0));
+        }
+        mLocationDao.insert(loc);
+    }
+
+    /**
+     * @param location picked by user from location list dialog
+     */
+    public void setLocation(Location location) {
+        LatLng l = new LatLng(location.getLat(),location.getLng());
+        mLocationDataManager.setDestination(l);
+    }
 
 
-	@Override
+
+
+    @Override
 	protected void onResume() {
 		super.onResume();
 		mLocationDataManager.onResume();
@@ -96,14 +186,8 @@ public class RadarActivity extends Activity {
 		super.onPause();
 		mLocationDataManager.onPause();
 	}
-	
-	/**
-	 * remember target destination
-	 */
-	@Override
-	protected void onSaveInstanceState(Bundle outState) {
-		super.onSaveInstanceState(outState);
-		mLocationDataManager.saveDestination();
-	}
 
+    public LocationDao getLocationDao() {
+        return mLocationDao;
+    }
 }
