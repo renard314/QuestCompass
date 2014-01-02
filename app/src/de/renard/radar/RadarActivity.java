@@ -2,7 +2,6 @@ package de.renard.radar;
 
 import com.google.android.gms.maps.model.LatLng;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -156,12 +155,16 @@ public class RadarActivity extends FragmentActivity {
         loc.setLat(location.latitude);
         loc.setLng(location.longitude);
         loc.setActive(true);
+        removeLastActiveLocation();
+        mLocationDao.insert(loc);
+    }
+
+    private void removeLastActiveLocation() {
         final List<Location> list = mLocationDao.queryBuilder().where(LocationDao.Properties.Active.eq(true)).limit(1).list();
         if (list.size()==1){
             list.get(0).setActive(false);
             mLocationDao.update(list.get(0));
         }
-        mLocationDao.insert(loc);
     }
 
     /**
@@ -169,6 +172,9 @@ public class RadarActivity extends FragmentActivity {
      */
     public void setLocation(Location location) {
         LatLng l = new LatLng(location.getLat(),location.getLng());
+        location.setActive(true);
+        removeLastActiveLocation();
+        mLocationDao.update(location);
         mLocationDataManager.setDestination(l);
     }
 
